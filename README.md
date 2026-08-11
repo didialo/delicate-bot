@@ -1,127 +1,225 @@
-# Clouddyie's Cardboard Box — Discord Moderation Bot v2
+# 📦 Clouddyiе's Cardboard Box — Discord Moderation Bot v2
 
-A Discord-only moderation bot with a soft cardboard/pastel visual style, staff logs, persistent cases, warnings, automatic escalation, and member history.
+A Discord-only moderation bot with a soft cardboard/pastel visual style, staff logs, persistent moderation cases, warnings, automatic escalation, and member history.
+
+## ✨ Features
+
+* 🔨 Ban members temporarily or permanently
+* 👢 Kick members
+* 🔇 Timeout members
+* ⚠️ Persistent warnings
+* ⚡ Automatic warning escalation
+* ↩️ Remove bans and timeouts
+* 📋 Persistent moderation history
+* 📦 Individual case lookup
+* 📝 Staff-only moderation logs
+* 🎨 Customizable pastel embed colors
+* 💾 SQLite database storage
 
 ## Commands
 
 ### Moderation
-- `/ban member duration reason`
-- `/kick member reason`
-- `/mute member duration reason`
-- `/warn member reason`
+
+* `/ban member duration reason`
+* `/kick member reason`
+* `/mute member duration reason`
+* `/warn member reason`
 
 ### Reversals
-- `/unban user_id reason`
-- `/unmute member reason`
+
+* `/unban user_id reason`
+* `/unmute member reason`
 
 ### Records
-- `/history member limit`
-- `/case case_id`
 
-## Warning system
+* `/history member limit`
+* `/case case_id`
 
-Warnings are stored separately from cases and remain active until you later choose to add a warning-clear command.
+All moderation commands are restricted to staff members through Discord permissions or the configured staff role.
+
+## ⚠️ Warning System
+
+Warnings are stored separately from moderation cases and remain active until a warning-clear system is added.
 
 Default automatic escalation:
 
-| Active warnings | Action |
-|---:|---|
-| 3 | 1 hour timeout |
-| 5 | 1 day timeout |
-| 7 | Permanent ban |
+| Active warnings | Action         |
+| --------------: | -------------- |
+|               3 | 1 hour timeout |
+|               5 | 1 day timeout  |
+|               7 | Permanent ban  |
 
-The escalation thresholds are at the top of `bot.py` in `WARN_ESCALATION`, so you can change them easily.
+The escalation thresholds are configurable near the top of `bot.py`:
 
-For example:
+```py
+WARN_ESCALATION = [
+    (3, "MUTE", "1h"),
+    (5, "MUTE", "1d"),
+    (7, "BAN", "perm"),
+]
+```
 
-    WARN_ESCALATION = [
-        (3, "MUTE", "1h"),
-        (5, "MUTE", "1d"),
-        (7, "BAN", "perm"),
-    ]
+Only the highest threshold reached is applied. For example, a member reaching 5 active warnings receives the 5-warning escalation rather than both the 3-warning and 5-warning actions.
 
-The highest threshold reached is applied. A 5th warning therefore triggers the 5-warning escalation, not both the 3-warning and 5-warning actions.
+## 🎨 Design
 
-## Design
-
-The logs use Discord embeds with a warm pastel palette inspired by Clouddyie's Cardboard Box aesthetic.
+Moderation logs use Discord embeds with a warm pastel palette inspired by **Clouddyiе's Cardboard Box** aesthetic.
 
 Each moderation log contains:
-- Action
-- Member
-- Reason
-- Moderator
-- Duration when relevant
-- Case number
-- Timestamp
 
-The `/history` command shows the member's recent warnings and moderation cases in one private staff-only embed.
+* Action
+* Member
+* Reason
+* Moderator
+* Duration when relevant
+* Case number
+* Timestamp
 
-## Duration formats
+The `/history` command combines recent warnings and moderation cases into a private staff-only embed.
 
-Examples:
+## ⏱️ Duration Formats
 
-- `30m`
-- `2h`
-- `7d`
-- `1d12h`
-- `perm`
+Supported examples:
+
+```text
+30m
+2h
+7d
+1d12h
+perm
+```
+
+Supported units:
+
+* `s` — seconds
+* `m` — minutes
+* `h` — hours
+* `d` — days
+* `w` — weeks
 
 Discord native timeouts cannot exceed 28 days.
 
-## Setup
+## 🛠️ Setup
 
-1. Install Python 3.10+.
-2. Create your bot in the Discord Developer Portal.
-3. Invite it with the `bot` and `applications.commands` scopes.
-4. Give it:
-   - Ban Members
-   - Kick Members
-   - Moderate Members
-   - View Channels
-   - Send Messages
-   - Embed Links
-5. Put the bot role ABOVE the members it needs to moderate.
-6. Copy `.env.example` to `.env`.
-7. Fill in:
-   - `BOT_TOKEN`
-   - `GUILD_ID`
-   - `LOG_CHANNEL_ID`
-   - optionally `STAFF_ROLE_ID`
-8. Install dependencies:
+### Requirements
 
-    python -m pip install -r requirements.txt
+* Python 3.10+
+* A Discord application
+* A Discord bot token
+* A Discord server for testing
 
-9. Run:
+### 1. Create the bot
 
-    python bot.py
+Create a bot through the Discord Developer Portal.
 
-The bot creates `moderation.db` automatically.
+Invite it using the:
 
-## Staff workflow
+* `bot` scope
+* `applications.commands` scope
 
-A warning is as simple as:
+Give the bot these permissions:
 
-    /warn @Steve Spamming
+* Ban Members
+* Kick Members
+* Moderate Members
+* View Channels
+* Send Messages
+* Embed Links
 
-The bot records the warning, calculates the active warning count, posts a log, and checks the escalation rules.
+Make sure the bot's role is **above the members it needs to moderate**.
 
-History:
+### 2. Configure environment variables
 
-    /history @Steve
+Copy `.env.example` to `.env`.
 
-Case lookup:
+Fill in:
 
-    /case 42
+```env
+BOT_TOKEN=your_bot_token
+GUILD_ID=your_server_id
+LOG_CHANNEL_ID=your_staff_log_channel_id
+```
 
-## Security notes
+Optionally configure:
 
-- Never put your bot token in source code.
-- Never commit `.env`.
-- Never send your bot token to another person.
-- The bot checks Discord permissions and role hierarchy before taking moderation actions.
-- The staff log channel should be visible only to trusted staff.
+```env
+STAFF_ROLE_ID=0
+DATABASE_PATH=moderation.db
+```
 
-## Changing the look
+The remaining color variables can be left at their defaults.
 
-The colors can be changed in `.env` using decimal RGB integers. The defaults are already configured for the pastel cardboard-box theme.
+> Never share your bot token or commit `.env` to a public repository.
+
+### 3. Install dependencies
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### 4. Run Delicate
+
+```bash
+python bot.py
+```
+
+The bot automatically creates `moderation.db` when it starts.
+
+## 🧑‍⚖️ Staff Workflow
+
+Give a member a warning:
+
+```text
+/warn @Steve Spamming
+```
+
+The bot records the warning, calculates the active warning count, sends a staff log, and checks the escalation rules.
+
+View recent history:
+
+```text
+/history @Steve
+```
+
+Look up a specific case:
+
+```text
+/case 42
+```
+
+## 🔐 Security
+
+* Never put your bot token in source code.
+* Never commit `.env`.
+* Never share your bot token with anyone.
+* The bot checks Discord permissions and role hierarchy before taking moderation actions.
+* Keep the staff log channel visible only to trusted staff.
+* Keep the SQLite database private if it contains sensitive moderation records.
+
+## 🎨 Changing the Look
+
+Embed colors can be customized through `.env` using decimal RGB integers.
+
+The default values are configured for the pastel cardboard-box aesthetic.
+
+## 📁 Project Files
+
+```text
+delicate-bot/
+├── bot.py
+├── requirements.txt
+├── .env.example
+├── .gitignore
+├── README.md
+├── PRIVACY.md
+├── TERMS.md
+└── LICENSE
+```
+
+## 📜 License
+
+This project is licensed under the MIT License. See `LICENSE` for details.
+
+---
+
+**Delicate — soft colors, hard moderation.** 🎀📦
