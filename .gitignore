@@ -1,6 +1,11 @@
 .env
+
 moderation.db
+moderation.db-shm
+moderation.db-wal
+
 __pycache__/
 *.pyc
+
 .venv/
 venv/
