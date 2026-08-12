@@ -1,294 +1,514 @@
-# 📦 Clouddyiе's Cardboard Box — Discord Moderation Bot v2
+# Delicate Bot 📦
 
-A Discord moderation bot with a soft cardboard/pastel visual style, staff logs, persistent moderation cases, warnings, automatic escalation, member history, configurable server prefixes, and Cardboard Box boost announcements.
+A Discord moderation bot made for **Clouddyiie's Cardboard Box**.
 
-## ✨ Features
+Delicate provides moderation through both **Discord slash commands** and the **`d!` prefix**.
 
-- 🔨 Ban members temporarily or permanently
-- 👢 Kick members
-- 🔇 Timeout members
-- ⚠️ Persistent warnings
-- ⚡ Automatic warning escalation
-- ↩️ Remove bans and timeouts
-- 📋 Persistent moderation history
-- 📦 Individual case lookup
-- 📝 Staff-only moderation logs
-- 🎨 Customizable pastel embed colors
-- 💾 SQLite database storage
-- 🪽 Configurable server command prefixes
-- 📦 Server boost announcements
-- 🧪 Boost announcement testing with slash and prefix commands
+## ✦ Features
 
-## Commands
+* 🔨 Ban members
+* 👢 Kick members
+* 🔇 Timeout / mute members
+* ↩️ Remove timeouts
+* ↩️ Unban users
+* ⚠️ Warn members
+* 📦 Moderation history
+* 🔎 Case lookup
+* ⚡ Automatic warning escalation
+* 📝 Moderation logs
+* ⚙️ Per-server settings
+* ⏱️ Automatic expiration of temporary bans and mutes
+* `/` slash commands
+* `d!` prefix commands
 
-### Moderation — Slash Commands
+## ✦ Commands
 
-- `/ban member duration reason`
-- `/kick member reason`
-- `/mute member duration reason`
-- `/warn member reason`
+All moderation commands work with both slash commands and prefix commands.
 
-### Reversals — Slash Commands
+| Slash       | Prefix       | Description                             |
+| ----------- | ------------ | --------------------------------------- |
+| `/ban`      | `d!ban`      | Ban a member temporarily or permanently |
+| `/kick`     | `d!kick`     | Kick a member                           |
+| `/mute`     | `d!mute`     | Timeout a member                        |
+| `/unmute`   | `d!unmute`   | Remove a member's timeout               |
+| `/warn`     | `d!warn`     | Give a member a warning                 |
+| `/unban`    | `d!unban`    | Unban a user by Discord ID              |
+| `/history`  | `d!history`  | View moderation history                 |
+| `/case`     | `d!case`     | Look up a moderation case               |
+| `/setlog`   | `d!setlog`   | Set the moderation log channel          |
+| `/setboost` | `d!setboost` | Set the boost notification channel      |
+| `/setstaff` | `d!setstaff` | Set the staff role                      |
+| `/settings` | `d!settings` | View server settings                    |
 
-- `/unban user_id reason`
-- `/unmute member reason`
+## ✦ Prefix
 
-### Records — Slash Commands
+The default prefix is:
 
-- `/history member limit`
-- `/case case_id`
+`d!`
 
-All moderation commands are restricted to staff members through Discord permissions or the configured staff role.
+Examples:
 
-## 🪽 Prefix Commands
+`d!warn @user spamming`
 
-The default prefix is **`d!`**.
+`d!kick @user breaking the rules`
 
-`d!` always remains available, even if a server changes its custom prefix, so the prefix can always be changed or reset.
+`d!mute @user 2h being disruptive`
 
-### Prefix management
+`d!history @user`
 
-- `d!prefix` — show the current server prefix
-- `d!prefix set c!` — change the server prefix
-- `d!prefix reset` — restore the default `d!` prefix
+`d!case 12`
 
-Changing the prefix requires the **Manage Server** permission.
+The `d!` prefix remains available even when a server uses another configured prefix.
 
-A custom prefix may be up to 5 characters long.
+## ✦ Prefix Configuration
 
-### Boost testing
+The prefix system supports server-specific prefixes.
 
-The boost module provides the same test command through both command systems:
+Show the current prefix:
 
-- `/testboost`
-- `d!testboost` — or the server's configured prefix
+`d!prefix`
 
-The test command posts a Cardboard Box boost announcement in the configured boost channel.
+Change the prefix:
 
-## 📦 Server Boosts
+`d!prefix set c!`
 
-Delicate automatically detects when a member starts boosting the server and sends a Cardboard Box-themed announcement to the configured boost channel.
+Reset the prefix:
 
-Boost announcements include:
+`d!prefix reset`
 
-- The boosting member
-- Current server boost count
-- Current server boost level
-- The member's avatar
-- Cardboard Box-themed embed styling
+For example, a server using `c!` can use:
 
-Configure the announcement channel with:
+`c!warn @user spamming`
 
-```env
-BOOST_CHANNEL_ID=your_boost_channel_id
-```
+and `d!warn @user spamming` will still work.
 
-If `BOOST_CHANNEL_ID` is `0` or not configured, boost announcements are disabled.
+Changing the prefix requires **Manage Server** permission.
 
-## ⚠️ Warning System
+## ✦ Warning Escalation
 
-Warnings are stored separately from moderation cases and remain active until a warning-clear system is added.
+Warnings automatically escalate when a member reaches certain numbers of active warnings.
 
-Default automatic escalation:
+| Active warnings | Automatic action |
+| --------------: | ---------------- |
+|               3 | 1 hour timeout   |
+|               5 | 1 day timeout    |
+|               7 | Permanent ban    |
 
-| Active warnings | Action |
-|---:|---|
-| 3 | 1 hour timeout |
-| 5 | 1 day timeout |
-| 7 | Permanent ban |
+The escalation is stored as a moderation case and can appear in the moderation logs.
 
-The escalation thresholds are configurable near the top of `bot.py`:
+## ✦ Temporary Moderation
 
-```py
-WARN_ESCALATION = [
-    (3, "MUTE", "1h"),
-    (5, "MUTE", "1d"),
-    (7, "BAN", "perm"),
-]
-```
+Supported duration formats include:
 
-Only the highest threshold reached is applied.
+`30m`
 
-For example, a member reaching 5 active warnings receives the 5-warning escalation rather than both the 3-warning and 5-warning actions.
+`2h`
 
-## 🎨 Design
+`7d`
 
-Moderation logs use Discord embeds with a warm pastel palette inspired by **Clouddyiе's Cardboard Box** aesthetic.
+`1d12h`
 
-Each moderation log contains:
+Permanent bans can use:
 
-- Action
-- Member
-- Reason
-- Moderator
-- Duration when relevant
-- Case number
-- Timestamp
-
-The `/history` command combines recent warnings and moderation cases into a private staff-only embed.
-
-Boost announcements use the same Cardboard Box visual language, with a dedicated boost message for members who support the server.
-
-## ⏱️ Duration Formats
-
-Supported examples:
-
-```text
-30m
-2h
-7d
-1d12h
-perm
-```
+`perm`
 
 Supported units:
 
-- `s` — seconds
-- `m` — minutes
-- `h` — hours
-- `d` — days
-- `w` — weeks
+* `s` — seconds
+* `m` — minutes
+* `h` — hours
+* `d` — days
+* `w` — weeks
 
-Discord native timeouts cannot exceed 28 days.
+Discord timeouts cannot exceed 28 days.
 
-## 🛠️ Setup
+Delicate automatically checks for expired temporary bans and timeouts and removes them when their expiration time is reached.
 
-### Requirements
+## ✦ Moderation History
 
-- Python 3.10+
-- A Discord application
-- A Discord bot token
-- A Discord server for testing
-
-### 1. Create the bot
-
-Create a bot through the Discord Developer Portal.
-
-Invite it using the:
-
-- `bot` scope
-- `applications.commands` scope
-
-Give the bot these permissions:
-
-- Ban Members
-- Kick Members
-- Moderate Members
-- View Channels
-- Send Messages
-- Embed Links
-
-Make sure the bot's role is **above the members it needs to moderate**.
-
-### 2. Configure environment variables
-
-Copy `.env.example` to `.env`.
-
-Fill in:
-
-```env
-BOT_TOKEN=your_bot_token
-GUILD_ID=your_server_id
-LOG_CHANNEL_ID=your_staff_log_channel_id
-```
-
-Optionally configure:
-
-```env
-STAFF_ROLE_ID=0
-DATABASE_PATH=moderation.db
-BOOST_CHANNEL_ID=0
-```
-
-The remaining color variables can be left at their defaults.
-
-> Never share your bot token or commit `.env` to a public repository.
-
-### 3. Install dependencies
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-### 4. Run Delicate
-
-```bash
-python bot.py
-```
-
-The bot automatically creates `moderation.db` when it starts.
-
-## 🧑‍⚖️ Staff Workflow
-
-Give a member a warning:
-
-```text
-/warn @Steve Spamming
-```
-
-The bot records the warning, calculates the active warning count, sends a staff log, and checks the escalation rules.
+Every moderation case receives a case number.
 
 View recent history:
 
+`/history @user`
+
+or:
+
+`d!history @user`
+
+Look up a case:
+
+`/case 42`
+
+or:
+
+`d!case 42`
+
+Moderation history is stored persistently in SQLite.
+
+## ✦ Moderation Logs
+
+Administrators can configure the moderation log channel with:
+
+`/setlog #channel`
+
+or:
+
+`d!setlog #channel`
+
+Logs contain information such as:
+
+* Action
+* Target
+* Moderator
+* Reason
+* Duration
+* Case number
+* Timestamp
+* Automatic escalation details when applicable
+
+## ✦ Server Settings
+
+Delicate stores server configuration separately for each server.
+
+Available settings:
+
+* Moderation log channel
+* Boost notification channel
+* Staff role
+
+Configure them with:
+
+`/setlog`
+
+`/setboost`
+
+`/setstaff`
+
+View them with:
+
+`/settings`
+
+## ✦ Database
+
+Delicate uses SQLite.
+
+The default database file is:
+
+`moderation.db`
+
+The project uses a database package:
+
 ```text
-/history @Steve
+database/
+├── __init__.py
+└── database.py
 ```
 
-Look up a specific case:
+The database module handles:
 
-```text
-/case 42
+* Moderation cases
+* Warnings
+* Warning counts
+* Case expiration
+* Moderation history
+* Server settings
+* Database initialization
+* Database health checks
+
+The database is initialized automatically when the module is imported.
+
+### Important
+
+The bot imports the database package with:
+
+```python
+import database
 ```
 
-Manage the server prefix:
+The actual database implementation is located in:
+
+```text
+database/database.py
+```
+
+Make sure `database/__init__.py` exists.
+
+Do not replace the database package with an unrelated `database.py` file in the project root.
+
+## ✦ Database Troubleshooting
+
+If you see:
+
+```text
+AttributeError: module 'database' has no attribute 'create_case'
+```
+
+Python is probably importing the wrong `database` package/module.
+
+Check what Python is importing:
+
+```powershell
+py -c "import database; print(database.__file__); print(hasattr(database, 'create_case')); print(hasattr(database, 'get_expired_cases')); print(hasattr(database, 'get_guild_setting'))"
+```
+
+The functions should report:
+
+```text
+True
+True
+True
+```
+
+If `database.__file__` is `None` and Python reports a namespace package, check that:
+
+```text
+database/__init__.py
+```
+
+exists.
+
+Keep `moderation.db` intact. Delicate uses `CREATE TABLE IF NOT EXISTS`, so an existing database is preserved.
+
+## ✦ Requirements
+
+* Python 3.10+
+* discord.py
+* python-dotenv
+
+Install dependencies:
+
+```powershell
+py -m pip install -U discord.py python-dotenv
+```
+
+## ✦ Environment
+
+Create a `.env` file in the project root.
+
+Example:
+
+```env
+BOT_TOKEN=your_bot_token_here
+GUILD_ID=your_server_id_here
+
+DATABASE_PATH=moderation.db
+
+COLOR_BAN=14423100
+COLOR_KICK=16763187
+COLOR_MUTE=11513775
+COLOR_WARN=16772724
+COLOR_UNBAN=11976299
+COLOR_HISTORY=13224393
+```
+
+Never share your bot token.
+
+Never commit `.env` to GitHub.
+
+## ✦ Discord Developer Portal
+
+For prefix commands to work, **Message Content Intent must be enabled**.
+
+Go to:
+
+**Discord Developer Portal → Your Application → Bot → Privileged Gateway Intents**
+
+Enable:
+
+* **Message Content Intent**
+* **Server Members Intent** when required by the bot's features
+
+If slash commands work but commands such as:
+
+`d!warn`
+
+`d!ban`
+
+`d!kick`
+
+do nothing, check **Message Content Intent first**.
+
+The bot also needs the appropriate Discord permissions for the moderation actions it performs.
+
+Make sure the bot's role is above the members it needs to moderate.
+
+## ✦ Bot Permissions
+
+Recommended permissions:
+
+* View Channels
+* Send Messages
+* Embed Links
+* Read Message History
+* Kick Members
+* Ban Members
+* Moderate Members
+
+The bot cannot moderate members whose highest role is above or equal to the bot's highest role.
+
+## ✦ Running the Bot
+
+From the project directory:
+
+```powershell
+py bot.py
+```
+
+A successful startup should look similar to:
+
+```text
+Synced commands to guild ...
+Logged in as ...
+```
+
+The exact number of commands may change as features are added.
+
+## ✦ Testing
+
+### Slash commands
+
+```text
+/warn
+/kick
+/ban
+/mute
+/unmute
+/unban
+/history
+/case
+```
+
+### Prefix commands
+
+```text
+d!warn
+d!kick
+d!ban
+d!mute
+d!unmute
+d!unban
+d!history
+d!case
+```
+
+### Prefix configuration
 
 ```text
 d!prefix
+d!prefix set c!
+d!prefix reset
 ```
 
-Run a boost announcement test:
+## ✦ Common Problems
+
+### Prefix commands do nothing
+
+Check:
+
+1. Message Content Intent is enabled in the Discord Developer Portal.
+2. The bot has permission to view and read messages in the channel.
+3. The bot was restarted after changing its intents.
+4. You are using `d!` or the server's configured prefix.
+
+### Slash commands are missing
+
+Check:
+
+* `GUILD_ID` is correct.
+* The bot has the `applications.commands` scope.
+* The bot can access the guild.
+* Command synchronization succeeds during startup.
+
+### The bot cannot moderate someone
+
+Check:
+
+* Bot permissions
+* Moderator permissions
+* Staff role
+* Bot role hierarchy
+* Target member's role hierarchy
+
+### Database errors
+
+If you receive an error involving `database.create_case`, `database.get_expired_cases`, or another database function, make sure the `database/` package contains:
 
 ```text
-d!testboost
+database/
+├── __init__.py
+└── database.py
 ```
 
-## 🔐 Security
+and that `database/database.py` contains the required functions.
 
-- Never put your bot token in source code.
-- Never commit `.env`.
-- Never share your bot token with anyone.
-- The bot checks Discord permissions and role hierarchy before taking moderation actions.
-- Keep the staff log channel visible only to trusted staff.
-- Keep the SQLite database private if it contains sensitive moderation records.
-- Only trusted staff should be given permission to change the server prefix.
+## ✦ Project Structure
 
-## 🎨 Changing the Look
-
-Embed colors can be customized through `.env` using decimal RGB integers.
-
-The default values are configured for the pastel cardboard-box aesthetic.
-
-## 📁 Project Files
+A typical project looks like:
 
 ```text
 delicate-bot/
+│
 ├── bot.py
-├── modules/
-│   ├── boosts.py
-│   └── prefixes.py
-├── requirements.txt
+├── moderation.db
+├── .env
 ├── .env.example
-├── .gitignore
-├── README.md
-├── PRIVACY.md
-├── TERMS.md
-└── LICENSE
+│
+├── database/
+│   ├── __init__.py
+│   └── database.py
+│
+└── modules/
+    └── prefixes.py
 ```
 
-## 📜 License
+## ✦ Security
 
-This project is licensed under the MIT License. See `LICENSE` for details.
+Never commit:
 
----
+```text
+.env
+```
 
-**Delicate — soft colors, hard moderation.** 🎀📦
+Never publish:
+
+```text
+BOT_TOKEN
+```
+
+If your bot token is accidentally exposed, regenerate it immediately in the Discord Developer Portal.
+
+The SQLite database may contain moderation records, so treat it as private data.
+
+## ✦ Current Status
+
+Delicate currently provides:
+
+* ✅ Prefix moderation commands
+* ✅ Slash moderation commands
+* ✅ SQLite persistence
+* ✅ Moderation cases
+* ✅ Persistent warnings
+* ✅ Automatic warning escalation
+* ✅ Temporary bans
+* ✅ Temporary timeouts
+* ✅ Automatic expiration
+* ✅ Moderation history
+* ✅ Case lookup
+* ✅ Server settings
+* ✅ Moderation logging
+* ✅ Staff permission checks
+* ✅ Configurable server prefixes
+
+## ✦ Credits
+
+Made for **Clouddyiie's Cardboard Box**.
+
+Built with:
+
+* Python
+* discord.py
+* SQLite
+* python-dotenv
+
+**Delicate — soft colors, hard moderation.** 📦🎀
