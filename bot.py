@@ -9,6 +9,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+from modules.prefixes import get_prefix
 
 load_dotenv()
 
@@ -17,6 +18,7 @@ GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID", "0") or 0)
 STAFF_ROLE_ID = int(os.getenv("STAFF_ROLE_ID", "0") or 0)
 DATABASE_PATH = os.getenv("DATABASE_PATH", "moderation.db")
+BOOST_CHANNEL_ID = int(os.getenv("BOOST_CHANNEL_ID", "0"))
 
 # Clouddyie's Cardboard Box-inspired palette.
 # Discord embeds accept decimal RGB integers.
@@ -93,6 +95,9 @@ def create_case(
     duration: Optional[str] = None,
     expires_at: Optional[int] = None,
 ) -> int:
+    # sqlite3 parameter typing can be strict in type checkers; use object for nullable values
+    expires_param: object = expires_at if expires_at is not None else None
+
     cur = db.execute("""
         INSERT INTO cases
         (guild_id, action, user_id, user_name, moderator_id, moderator_name,
@@ -100,10 +105,11 @@ def create_case(
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     """, (
         guild_id, action, user.id, str(user), moderator.id, str(moderator),
-        reason, duration, expires_at, now_ts()
+        reason, duration, expires_param, now_ts()
     ))
     db.commit()
-    return int(cur.lastrowid)
+    last = cur.lastrowid
+    return int(last) if last is not None else 0
 
 
 def close_case(case_id: int) -> None:
@@ -125,7 +131,8 @@ def add_warning(
         guild_id, user.id, str(user), moderator.id, str(moderator), reason, now_ts()
     ))
     db.commit()
-    return int(cur.lastrowid)
+    last = cur.lastrowid
+    return int(last) if last is not None else 0
 
 
 def active_warning_count(guild_id: int, user_id: int) -> int:
@@ -248,7 +255,13 @@ def pretty_action(action: str) -> str:
 
 
 intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="!", intents=intents)
+intents.members = True
+intents.message_content = True
+
+bot = commands.Bot(
+    command_prefix=get_prefix,
+    intents=intents,
+)
 
 
 async def get_log_channel(guild: discord.Guild):
@@ -717,9 +730,15 @@ async def before_expiration_worker():
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    if bot.user is not None:
+        print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    else:
+        print("Logged in, but bot.user is None")
+
     if not expiration_worker.is_running():
         expiration_worker.start()
+
+    await sync_commands()
 
 
 async def sync_commands():
@@ -735,7 +754,8 @@ async def sync_commands():
 
 async def main():
     async with bot:
-        await sync_commands()
+        await bot.load_extension("modules.boosts")
+        await bot.load_extension("modules.prefixes")
         await bot.start(BOT_TOKEN)
 
 
