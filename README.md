@@ -1,6 +1,6 @@
 # Delicate Bot 📦
 
-A Discord moderation bot made for **Clouddyiie's Cardboard Box**.
+A Discord moderation bot made for **Clouddyie's Cardboard Box**.
 
 Delicate provides moderation through both **Discord slash commands** and the **`d!` prefix**.
 
