@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 from database import database
+from modules import tickets
 
 
 # ============================================================
@@ -396,51 +397,6 @@ async def require_staff(
 # ============================================================
 
 @bot.hybrid_command(
-    name="help",
-    description="Show Delicate's commands and features.",
-)
-async def help_command(
-    ctx: commands.Context,
-):
-    """Show Delicate's help menu."""
-
-    embed = discord.Embed(
-        title="✦ delicate",
-        description=(
-            "a little moderation bot made to keep things "
-            "safe, calm, and cozy. ୨୧\n\n"
-            "**moderation**\n"
-            "`/ban` or `d!ban` — ban a member\n"
-            "`/kick` or `d!kick` — kick a member\n"
-            "`/mute` or `d!mute` — timeout a member\n"
-            "`/warn` or `d!warn` — warn a member\n"
-            "`/unban` or `d!unban` — unban a user\n"
-            "`/unmute` or `d!unmute` — remove a timeout\n"
-            "`/history` or `d!history` — view moderation history\n"
-            "`/case` or `d!case` — look up a moderation case\n\n"
-            "**server setup**\n"
-            "`/setlog` or `d!setlog` — set the moderation log channel\n"
-            "`/setboost` or `d!setboost` — set the boost channel\n"
-            "`/setstaff` or `d!setstaff` — set the staff role\n"
-            "`/settings` or `d!settings` — view Delicate's settings\n\n"
-            "**other**\n"
-            "`/invite` or `d!invite` — get Delicate's invite link\n"
-            "`/help` or `d!help` — show this menu"
-        ),
-        color=COLOR_HISTORY,
-    )
-
-    embed.set_footer(
-        text="delicate · keeping things cozy ୨୧"
-    )
-
-    await send_response(
-        ctx,
-        embed=embed,
-    )
-
-
-@bot.hybrid_command(
     name="invite",
     description="Get Delicate's invite link.",
 )
@@ -482,6 +438,114 @@ async def invite(
         ctx,
         embed=embed,
     )
+
+# ============================================================
+# HELP
+# ============================================================
+
+@bot.hybrid_command(
+    name="help",
+    description="Show Delicate's commands and features.",
+)
+async def help_command(
+    ctx: commands.Context,
+):
+    """Show Delicate's commands automatically."""
+
+    commands_list = []
+
+    for command in sorted(
+        bot.walk_commands(),
+        key=lambda cmd: cmd.name.lower(),
+    ):
+        if command.hidden:
+            continue
+
+        description = (
+            command.description
+            or "No description available."
+        )
+
+        commands_list.append(
+            f"`/{command.name}` · `d!{command.name}`\n"
+            f"> {description}"
+        )
+
+    if not commands_list:
+        commands_list.append(
+            "No commands are currently available."
+        )
+
+    embed = discord.Embed(
+        title="✦ delicate",
+        description=(
+            "a little moderation bot made to keep things "
+            "safe, calm, and cozy. ୨୧\n\n"
+            "### commands\n"
+            + "\n\n".join(commands_list)
+        ),
+        color=COLOR_HISTORY,
+    )
+
+    embed.set_footer(
+        text="delicate · keeping things cozy ୨୧"
+    )
+
+    await send_response(
+        ctx,
+        embed=embed,
+    )
+
+    # ============================================================
+# PING
+# ============================================================
+
+@bot.hybrid_command(
+    name="ping",
+    description="Check Delicate's response time.",
+)
+async def ping(
+    ctx: commands.Context,
+):
+    """Show Delicate's latency."""
+
+    start = discord.utils.utcnow()
+
+    if ctx.interaction is not None:
+        await ctx.interaction.response.defer()
+        response_time = (
+            discord.utils.utcnow() - start
+        ).total_seconds() * 1000
+
+        websocket = bot.latency * 1000
+
+        await ctx.interaction.edit_original_response(
+            content=(
+                "✦ **delicate is awake** ୨୧\n\n"
+                f"♡ response · `{response_time:.0f}ms`\n"
+                f"♡ websocket · `{websocket:.0f}ms`"
+            )
+        )
+
+    else:
+        message = await ctx.send(
+            "✦ **delicate is awake** ୨୧\n\n"
+            "♡ checking..."
+        )
+
+        response_time = (
+            discord.utils.utcnow() - start
+        ).total_seconds() * 1000
+
+        websocket = bot.latency * 1000
+
+        await message.edit(
+            content=(
+                "✦ **delicate is awake** ୨୧\n\n"
+                f"♡ response · `{response_time:.0f}ms`\n"
+                f"♡ websocket · `{websocket:.0f}ms`"
+            )
+        )
 
 # ============================================================
 # SETTINGS
@@ -632,6 +696,22 @@ async def settings(
             f"<@&{staff_id}>"
             if staff_id
             else "Using Discord moderation permissions"
+        ),
+        inline=False,
+    )
+
+    ticket_id = database.get_guild_setting(
+        guild_id,
+    
+        "ticket_channel_id",
+    )
+
+    embed.add_field(
+        name="Ticket panel",
+        value=(
+            f"<#{ticket_id}>"
+            if ticket_id
+            else "Not configured"
         ),
         inline=False,
     )
@@ -1966,7 +2046,6 @@ async def on_ready():
     if not expiration_worker.is_running():
         expiration_worker.start()
 
-
 # ============================================================
 # COMMAND SYNC
 # ============================================================
@@ -1979,14 +2058,17 @@ async def sync_commands():
         f"global command(s)."
     )
 
+
 # ============================================================
 # SETUP HOOK
 # ============================================================
 
 @bot.event
 async def setup_hook():
-    # Remove old guild-scoped commands from the configured
-    # development/test server.
+    from modules import tickets
+
+    await tickets.setup(bot)
+
     if GUILD_ID:
         guild = discord.Object(id=GUILD_ID)
 
@@ -2003,7 +2085,6 @@ async def setup_hook():
             f"guild {GUILD_ID}."
         )
 
-    # Sync the current commands globally.
     await sync_commands()
 
 # ============================================================
