@@ -1687,18 +1687,29 @@ async def on_app_command_error(
 
 @bot.event
 async def on_ready():
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Activity(
+            type=discord.ActivityType.playing,
+            name="keeping things cozy ୨୧",
+        ),
+    )
 
-    if bot.user:
+    if bot.user is not None:
         print(
-            f"Logged in as "
-            f"{bot.user} "
+            f"Logged in as {bot.user} "
             f"(ID: {bot.user.id})"
+        )
+    else:
+        print(
+            "Logged in, but bot.user is None"
         )
 
     if not expiration_worker.is_running():
         expiration_worker.start()
 
-
+    await sync_commands()
+    
 # ============================================================
 # COMMAND SYNC
 # ============================================================
