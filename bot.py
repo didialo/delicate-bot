@@ -298,6 +298,335 @@ async def send_log(
     except discord.HTTPException:
         pass
 
+# ============================================================
+# CHANNEL MODERATION
+# ============================================================
+
+@bot.hybrid_command(
+    name="hide",
+    description="Hide the current channel from regular members.",
+)
+@app_commands.default_permissions(
+    manage_channels=True,
+)
+@app_commands.checks.has_permissions(
+    manage_channels=True,
+)
+@commands.has_permissions(
+    manage_channels=True,
+)
+async def hidechannel(
+    ctx: commands.Context,
+) -> None:
+    """Hide the channel where the command was used."""
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return
+
+    if not isinstance(
+        ctx.channel,
+        discord.TextChannel,
+    ):
+        await respond_error(
+            ctx,
+            "This command can only be used in a text channel.",
+        )
+        return
+
+    channel = ctx.channel
+
+    everyone_overwrite = channel.overwrites_for(
+        ctx.guild.default_role,
+    )
+
+    everyone_overwrite.view_channel = False
+
+    try:
+        await channel.set_permissions(
+            ctx.guild.default_role,
+            overwrite=everyone_overwrite,
+            reason=(
+                f"Channel hidden by "
+                f"{ctx.author}"
+            ),
+        )
+
+        # Preserve access for the configured staff role.
+        staff_role_id = database.get_guild_setting(
+            ctx.guild.id,
+            "staff_role_id",
+        )
+
+        if staff_role_id:
+            staff_role = ctx.guild.get_role(
+                staff_role_id,
+            )
+
+            if staff_role is not None:
+                staff_overwrite = channel.overwrites_for(
+                    staff_role,
+                )
+
+                staff_overwrite.view_channel = True
+
+                await channel.set_permissions(
+                    staff_role,
+                    overwrite=staff_overwrite,
+                    reason=(
+                        "Preserving staff access "
+                        "to hidden channel"
+                    ),
+                )
+
+    except discord.Forbidden:
+        await respond_error(
+            ctx,
+            "I don't have permission to change this channel.",
+        )
+        return
+
+    except discord.HTTPException:
+        await respond_error(
+            ctx,
+            "Discord returned an error while hiding this channel.",
+        )
+        return
+
+    await send_response(
+        ctx,
+        "✦ **channel hidden** ୨୧\n"
+        "♡ this channel is now hidden from regular members.",
+        ephemeral=True,
+    )
+
+
+@bot.hybrid_command(
+    name="unhide",
+    description="Unhide the current channel for regular members.",
+)
+@app_commands.default_permissions(
+    manage_channels=True,
+)
+@app_commands.checks.has_permissions(
+    manage_channels=True,
+)
+@commands.has_permissions(
+    manage_channels=True,
+)
+async def unhidechannel(
+    ctx: commands.Context,
+):
+    """Unhide the channel where the command was used."""
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return
+
+    if not isinstance(
+        ctx.channel,
+        discord.TextChannel,
+    ):
+        await respond_error(
+            ctx,
+            "This command can only be used in a text channel.",
+        )
+        return
+
+    channel = ctx.channel
+
+    everyone_overwrite = channel.overwrites_for(
+        ctx.guild.default_role,
+    )
+
+    everyone_overwrite.view_channel = None
+
+    try:
+        await channel.set_permissions(
+            ctx.guild.default_role,
+            overwrite=everyone_overwrite,
+            reason=(
+                f"Channel unhidden by "
+                f"{ctx.author}"
+            ),
+        )
+
+    except discord.Forbidden:
+        await respond_error(
+            ctx,
+            "I don't have permission to change this channel.",
+        )
+        return
+
+    except discord.HTTPException:
+        await respond_error(
+            ctx,
+            "Discord returned an error while unhiding this channel.",
+        )
+        return
+
+    await send_response(
+        ctx,
+        "✦ **channel visible** ୨୧\n"
+        "♡ this channel is visible to regular members again.",
+        ephemeral=True,
+    )
+
+
+@bot.hybrid_command(
+    name="lock",
+    description="Lock the current channel.",
+)
+@app_commands.default_permissions(
+    manage_channels=True,
+)
+@app_commands.checks.has_permissions(
+    manage_channels=True,
+)
+@commands.has_permissions(
+    manage_channels=True,
+)
+async def lockchannel(
+    ctx: commands.Context,
+):
+    """Lock the channel where the command was used."""
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return
+
+    if not isinstance(
+        ctx.channel,
+        discord.TextChannel,
+    ):
+        await respond_error(
+            ctx,
+            "This command can only be used in a text channel.",
+        )
+        return
+
+    channel = ctx.channel
+
+    everyone_overwrite = channel.overwrites_for(
+        ctx.guild.default_role,
+    )
+
+    everyone_overwrite.send_messages = False
+
+    try:
+        await channel.set_permissions(
+            ctx.guild.default_role,
+            overwrite=everyone_overwrite,
+            reason=(
+                f"Channel locked by "
+                f"{ctx.author}"
+            ),
+        )
+
+    except discord.Forbidden:
+        await respond_error(
+            ctx,
+            "I don't have permission to change this channel.",
+        )
+        return
+
+    except discord.HTTPException:
+        await respond_error(
+            ctx,
+            "Discord returned an error while locking this channel.",
+        )
+        return
+
+    await send_response(
+        ctx,
+        "✦ **channel locked** ୨୧\n"
+        "♡ this channel is now read-only for regular members.",
+        ephemeral=True,
+    )
+
+
+@bot.hybrid_command(
+    name="unlock",
+    description="Unlock the current channel.",
+)
+@app_commands.default_permissions(
+    manage_channels=True,
+)
+@app_commands.checks.has_permissions(
+    manage_channels=True,
+)
+@commands.has_permissions(
+    manage_channels=True,
+)
+async def unlockchannel(
+    ctx: commands.Context,
+):
+    """Unlock the channel where the command was used."""
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return
+
+    if not isinstance(
+        ctx.channel,
+        discord.TextChannel,
+    ):
+        await respond_error(
+            ctx,
+            "This command can only be used in a text channel.",
+        )
+        return
+
+    channel = ctx.channel
+
+    everyone_overwrite = channel.overwrites_for(
+        ctx.guild.default_role,
+    )
+
+    everyone_overwrite.send_messages = None
+
+    try:
+        await channel.set_permissions(
+            ctx.guild.default_role,
+            overwrite=everyone_overwrite,
+            reason=(
+                f"Channel unlocked by "
+                f"{ctx.author}"
+            ),
+        )
+
+    except discord.Forbidden:
+        await respond_error(
+            ctx,
+            "I don't have permission to change this channel.",
+        )
+        return
+
+    except discord.HTTPException:
+        await respond_error(
+            ctx,
+            "Discord returned an error while unlocking this channel.",
+        )
+        return
+
+    await send_response(
+        ctx,
+        "✦ **channel unlocked** ୨୧\n"
+        "♡ regular members can send messages here again.",
+        ephemeral=True,
+    )
 
 # ============================================================
 # PERMISSION HELPERS
@@ -2045,19 +2374,7 @@ async def on_ready():
 
     if not expiration_worker.is_running():
         expiration_worker.start()
-
-# ============================================================
-# COMMAND SYNC
-# ============================================================
-
-async def sync_commands():
-    synced = await bot.tree.sync()
-
-    print(
-        f"Synced {len(synced)} "
-        f"global command(s)."
-    )
-
+ 
 
 # ============================================================
 # SETUP HOOK
@@ -2065,8 +2382,6 @@ async def sync_commands():
 
 @bot.event
 async def setup_hook():
-    from modules import tickets
-
     await tickets.setup(bot)
 
     if GUILD_ID:
@@ -2081,12 +2396,16 @@ async def setup_hook():
         )
 
         print(
-            f"Cleared old guild commands from "
+            f"Cleared stale guild commands from "
             f"guild {GUILD_ID}."
         )
 
-    await sync_commands()
+    synced = await bot.tree.sync()
 
+    print(
+        f"Synced {len(synced)} "
+        f"global command(s)."
+    )
 # ============================================================
 # MAIN
 # ============================================================
