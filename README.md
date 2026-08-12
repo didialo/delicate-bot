@@ -502,7 +502,7 @@ Delicate currently provides:
 
 ## ✦ Credits
 
-Made for **Clouddyiie's Cardboard Box**.
+Made for **Clouddyie's Cardboard Box**.
 
 Built with:
 
