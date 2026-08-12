@@ -1680,6 +1680,173 @@ async def on_app_command_error(
     except discord.HTTPException:
         pass
 
+# ============================================================
+# INVITE / GUILD JOIN DM
+# ============================================================
+
+async def find_guild_inviter(
+    guild: discord.Guild,
+) -> Optional[discord.User | discord.Member]:
+    """Find the user who added Delicate using the audit log."""
+
+    if bot.user is None:
+        return None
+
+    try:
+        async for entry in guild.audit_logs(
+            limit=10,
+            action=discord.AuditLogAction.bot_add,
+        ):
+            if entry.target is None:
+                continue
+
+            if getattr(entry.target, "id", None) != bot.user.id:
+                continue
+
+            if entry.user is None:
+                continue
+
+            if entry.created_at < (
+                discord.utils.utcnow() - timedelta(minutes=2)
+            ):
+                continue
+
+            return entry.user
+
+    except (
+        discord.Forbidden,
+        discord.HTTPException,
+    ):
+        return None
+
+    return None
+
+
+async def send_guild_join_dm(
+    guild: discord.Guild,
+    inviter: discord.User | discord.Member,
+) -> None:
+    """Send Delicate's private welcome DM to the person who added it."""
+
+    embed = discord.Embed(
+        title="✦ delicate is here",
+        description=(
+            f"hey, **{inviter.display_name}** ♡\n\n"
+            f"thank you for bringing me into **{guild.name}**!\n"
+            "i'm ready to help keep things safe, calm, and cozy.\n\n"
+            "**getting started**\n"
+            "`d!settings` — view the server settings\n"
+            "`d!setlog` — choose a moderation log channel\n"
+            "`d!setboost` — choose a boost notification channel\n"
+            "`d!setstaff` — choose the staff role\n\n"
+            "most setup commands require administrator permissions.\n"
+            "you can also use the matching slash commands."
+        ),
+        color=COLOR_HISTORY,
+    )
+
+    embed.set_footer(
+        text="delicate · keeping things cozy ୨୧"
+    )
+
+    try:
+        await inviter.send(embed=embed)
+
+        print(
+            f"Sent invite DM to {inviter} for {guild.name}"
+        )
+
+    except (
+        discord.Forbidden,
+        discord.HTTPException,
+    ):
+        print(
+            f"Could not DM inviter {inviter} for {guild.name}"
+        )
+
+        # ============================================================
+# TEST INVITE DM
+# ============================================================
+
+@bot.hybrid_command(
+    name="testinvitedm",
+    description="Test Delicate's server invite welcome DM.",
+)
+@commands.is_owner()
+async def testinvitedm(ctx: commands.Context):
+    """Test the invite welcome DM without inviting Delicate."""
+
+    if ctx.guild is None:
+        if ctx.interaction is not None:
+            if not ctx.interaction.response.is_done():
+                await ctx.interaction.response.send_message(
+                    "⚠️ This command must be used in a server.",
+                    ephemeral=True,
+                )
+        else:
+            await ctx.send(
+                "⚠️ This command must be used in a server."
+            )
+
+        return
+
+    # Acknowledge slash interactions immediately.
+    if ctx.interaction is not None:
+        await ctx.interaction.response.defer(
+            ephemeral=True,
+        )
+
+    await send_guild_join_dm(
+        ctx.guild,
+        ctx.author,
+    )
+
+    if ctx.interaction is not None:
+        await ctx.interaction.followup.send(
+            "✦ Invite DM test sent to your DMs.",
+            ephemeral=True,
+        )
+    else:
+        await ctx.send(
+            "✦ Invite DM test sent to your DMs."
+        )
+
+
+# ============================================================
+# REAL GUILD JOIN
+# ============================================================
+
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    """DM the person who invited Delicate."""
+
+    print(
+        f"Joined guild {guild.name} "
+        f"(ID: {guild.id})"
+    )
+
+    inviter: Optional[discord.User | discord.Member] = None
+
+    # Give Discord a moment to create the audit-log entry.
+    for _ in range(5):
+        inviter = await find_guild_inviter(guild)
+
+        if inviter is not None:
+            break
+
+        await asyncio.sleep(2)
+
+    if inviter is None:
+        print(
+            f"Could not determine who invited Delicate "
+            f"to {guild.name}."
+        )
+        return
+
+    await send_guild_join_dm(
+        guild,
+        inviter,
+    )
 
 # ============================================================
 # BOT EVENTS
@@ -1721,15 +1888,32 @@ async def sync_commands():
         f"global command(s)."
     )
 
-
 # ============================================================
 # SETUP HOOK
 # ============================================================
 
 @bot.event
 async def setup_hook():
-    await sync_commands()
+    # Remove old guild-scoped commands from the configured
+    # development/test server.
+    if GUILD_ID:
+        guild = discord.Object(id=GUILD_ID)
 
+        bot.tree.clear_commands(
+            guild=guild,
+        )
+
+        await bot.tree.sync(
+            guild=guild,
+        )
+
+        print(
+            f"Cleared old guild commands from "
+            f"guild {GUILD_ID}."
+        )
+
+    # Sync the current commands globally.
+    await sync_commands()
 
 # ============================================================
 # MAIN
