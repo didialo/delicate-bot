@@ -1,7 +1,6 @@
 import asyncio
 import os
 import re
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -10,27 +9,17 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
-from modules.prefixes import get_prefix
+from database import database
 
-load_dotenv()
 
 # ============================================================
 # CONFIG
 # ============================================================
 
+load_dotenv()
+
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 GUILD_ID = int(os.getenv("GUILD_ID", "0") or 0)
-LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID", "0") or 0)
-STAFF_ROLE_ID = int(os.getenv("STAFF_ROLE_ID", "0") or 0)
-DATABASE_PATH = os.getenv("DATABASE_PATH", "moderation.db")
-BOOST_CHANNEL_ID = int(os.getenv("BOOST_CHANNEL_ID", "0") or 0)
-
-# Default prefix is handled by modules.prefixes.py:
-# d!
-
-# ============================================================
-# COLORS
-# ============================================================
 
 COLOR_BAN = int(os.getenv("COLOR_BAN", "14423100"))
 COLOR_KICK = int(os.getenv("COLOR_KICK", "16763187"))
@@ -39,14 +28,13 @@ COLOR_WARN = int(os.getenv("COLOR_WARN", "16772724"))
 COLOR_UNBAN = int(os.getenv("COLOR_UNBAN", "11976299"))
 COLOR_HISTORY = int(os.getenv("COLOR_HISTORY", "13224393"))
 
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN is missing from .env")
+
+
 # ============================================================
 # WARNING ESCALATION
 # ============================================================
-#
-# 3 active warnings -> 1h timeout
-# 5 active warnings -> 1d timeout
-# 7 active warnings -> permanent ban
-#
 
 WARN_ESCALATION = [
     (3, "MUTE", "1h"),
@@ -54,251 +42,14 @@ WARN_ESCALATION = [
     (7, "BAN", "perm"),
 ]
 
-# ============================================================
-# ENV VALIDATION
-# ============================================================
-
-if not BOT_TOKEN:
-    raise RuntimeError("BOT_TOKEN is missing from .env")
-
-if not LOG_CHANNEL_ID:
-    raise RuntimeError("LOG_CHANNEL_ID is missing from .env")
 
 # ============================================================
-# DATABASE
-# ============================================================
-
-db = sqlite3.connect(DATABASE_PATH)
-db.row_factory = sqlite3.Row
-
-db.execute(
-    """
-    CREATE TABLE IF NOT EXISTS cases (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id INTEGER NOT NULL,
-        action TEXT NOT NULL,
-        user_id INTEGER NOT NULL,
-        user_name TEXT NOT NULL,
-        moderator_id INTEGER NOT NULL,
-        moderator_name TEXT NOT NULL,
-        reason TEXT NOT NULL,
-        duration TEXT,
-        expires_at INTEGER,
-        created_at INTEGER NOT NULL,
-        active INTEGER NOT NULL DEFAULT 1
-    )
-    """
-)
-
-db.execute(
-    """
-    CREATE TABLE IF NOT EXISTS warnings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        user_name TEXT NOT NULL,
-        moderator_id INTEGER NOT NULL,
-        moderator_name TEXT NOT NULL,
-        reason TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        active INTEGER NOT NULL DEFAULT 1,
-        escalation_case_id INTEGER
-    )
-    """
-)
-
-db.commit()
-
-
-# ============================================================
-# DATABASE HELPERS
+# GENERAL HELPERS
 # ============================================================
 
 def now_ts() -> int:
     return int(datetime.now(timezone.utc).timestamp())
 
-
-def create_case(
-    guild_id: int,
-    action: str,
-    user: discord.Member | discord.User,
-    moderator: discord.Member,
-    reason: str,
-    duration: Optional[str] = None,
-    expires_at: Optional[int] = None,
-) -> int:
-    cur = db.execute(
-        """
-        INSERT INTO cases (
-            guild_id,
-            action,
-            user_id,
-            user_name,
-            moderator_id,
-            moderator_name,
-            reason,
-            duration,
-            expires_at,
-            created_at,
-            active
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-        """,
-        (
-            guild_id,
-            action,
-            user.id,
-            str(user),
-            moderator.id,
-            str(moderator),
-            reason,
-            duration,
-            expires_at,
-            now_ts(),
-        ),
-    )
-
-    db.commit()
-
-    last = cur.lastrowid
-    return int(last) if last is not None else 0
-
-
-def close_case(case_id: int) -> None:
-    db.execute(
-        "UPDATE cases SET active = 0 WHERE id = ?",
-        (case_id,),
-    )
-    db.commit()
-
-
-def add_warning(
-    guild_id: int,
-    user: discord.Member,
-    moderator: discord.Member,
-    reason: str,
-) -> int:
-    cur = db.execute(
-        """
-        INSERT INTO warnings (
-            guild_id,
-            user_id,
-            user_name,
-            moderator_id,
-            moderator_name,
-            reason,
-            created_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            guild_id,
-            user.id,
-            str(user),
-            moderator.id,
-            str(moderator),
-            reason,
-            now_ts(),
-        ),
-    )
-
-    db.commit()
-
-    last = cur.lastrowid
-    return int(last) if last is not None else 0
-
-
-def active_warning_count(guild_id: int, user_id: int) -> int:
-    row = db.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM warnings
-        WHERE guild_id = ?
-        AND user_id = ?
-        AND active = 1
-        """,
-        (guild_id, user_id),
-    ).fetchone()
-
-    return int(row["count"])
-
-
-def get_user_history(
-    guild_id: int,
-    user_id: int,
-    limit: int = 10,
-):
-    return db.execute(
-        """
-        SELECT *
-        FROM (
-            SELECT
-                id,
-                action,
-                user_id,
-                user_name,
-                moderator_id,
-                moderator_name,
-                reason,
-                duration,
-                expires_at,
-                created_at,
-                active,
-                'case' AS source
-            FROM cases
-            WHERE guild_id = ?
-            AND user_id = ?
-            AND action != 'WARN'
-
-            UNION ALL
-
-            SELECT
-                id,
-                'WARN' AS action,
-                user_id,
-                user_name,
-                moderator_id,
-                moderator_name,
-                reason,
-                NULL AS duration,
-                NULL AS expires_at,
-                created_at,
-                active,
-                'warning' AS source
-            FROM warnings
-            WHERE guild_id = ?
-            AND user_id = ?
-        )
-        ORDER BY created_at DESC
-        LIMIT ?
-        """,
-        (
-            guild_id,
-            user_id,
-            guild_id,
-            user_id,
-            limit,
-        ),
-    ).fetchall()
-
-
-def get_expired_cases():
-    return db.execute(
-        """
-        SELECT *
-        FROM cases
-        WHERE active = 1
-        AND expires_at IS NOT NULL
-        AND expires_at <= ?
-        ORDER BY id ASC
-        """,
-        (now_ts(),),
-    ).fetchall()
-
-
-# ============================================================
-# GENERAL HELPERS
-# ============================================================
 
 def parse_duration(value: str) -> Optional[timedelta]:
     value = value.strip().lower()
@@ -314,7 +65,11 @@ def parse_duration(value: str) -> Optional[timedelta]:
         )
 
     normalized = re.sub(r"\s+", "", value)
-    rebuilt = "".join(f"{number}{unit}" for number, unit in matches)
+
+    rebuilt = "".join(
+        f"{number}{unit}"
+        for number, unit in matches
+    )
 
     if normalized != rebuilt:
         raise ValueError(
@@ -335,13 +90,18 @@ def parse_duration(value: str) -> Optional[timedelta]:
     )
 
     if seconds <= 0:
-        raise ValueError("Duration must be greater than zero.")
+        raise ValueError(
+            "Duration must be greater than zero."
+        )
 
     return timedelta(seconds=seconds)
 
 
 def format_duration(value: Optional[str]) -> str:
-    if not value or value.lower() in {
+    if not value:
+        return "permanent"
+
+    if value.lower() in {
         "perm",
         "permanent",
         "forever",
@@ -390,76 +150,64 @@ def pretty_action(action: str) -> str:
 # ============================================================
 
 intents = discord.Intents.default()
-intents.members = True
 intents.message_content = True
 
 bot = commands.Bot(
-    command_prefix=get_prefix,
+    command_prefix="d!",
     intents=intents,
 )
 
 
 # ============================================================
-# PERMISSION HELPERS
+# RESPONSE HELPERS
 # ============================================================
 
-def is_staff(member: discord.Member) -> bool:
-    if member.guild_permissions.administrator:
-        return True
+async def send_response(
+    ctx: commands.Context,
+    content: Optional[str] = None,
+    *,
+    embed: Optional[discord.Embed] = None,
+    ephemeral: bool = False,
+):
+    """
+    Sends a response for both prefix and slash/hybrid commands.
+    """
 
-    if STAFF_ROLE_ID:
-        if any(role.id == STAFF_ROLE_ID for role in member.roles):
-            return True
+    if ctx.interaction is not None:
+        if ctx.interaction.response.is_done():
+            kwargs = {}
+            if content is not None:
+                kwargs["content"] = content
+            if embed is not None:
+                kwargs["embed"] = embed
+            kwargs["ephemeral"] = ephemeral
+            return await ctx.interaction.followup.send(**kwargs)
 
-    permissions = member.guild_permissions
+        kwargs = {}
+        if content is not None:
+            kwargs["content"] = content
+        if embed is not None:
+            kwargs["embed"] = embed
+        kwargs["ephemeral"] = ephemeral
+        return await ctx.interaction.response.send_message(**kwargs)
 
-    return (
-        permissions.ban_members
-        or permissions.kick_members
-        or permissions.moderate_members
-        or permissions.manage_messages
+    kwargs = {}
+    if content is not None:
+        kwargs["content"] = content
+    if embed is not None:
+        kwargs["embed"] = embed
+    return await ctx.send(**kwargs)
+
+
+async def respond_error(
+    ctx: commands.Context,
+    message: str,
+):
+    await send_response(
+        ctx,
+        f"⚠️ {message}",
+        ephemeral=True,
     )
-
-
-def can_act_on(
-    moderator: discord.Member,
-    target: discord.Member,
-) -> bool:
-    if target.id in {
-        moderator.id,
-        moderator.guild.owner_id,
-    }:
-        return False
-
-    return (
-        moderator.guild_permissions.administrator
-        or target.top_role < moderator.top_role
-    )
-
-
-async def bot_can_act_on(
-    guild: discord.Guild,
-    target: discord.Member,
-) -> bool:
-    me = guild.me
-
-    if me is None:
-        return False
-
-    return target.top_role < me.top_role
-
-
-def prefix_staff_check():
-    async def predicate(ctx: commands.Context) -> bool:
-        if ctx.guild is None:
-            return False
-
-        if not isinstance(ctx.author, discord.Member):
-            return False
-
-        return is_staff(ctx.author)
-
-    return commands.check(predicate)
 
 
 # ============================================================
@@ -468,14 +216,23 @@ def prefix_staff_check():
 
 async def get_log_channel(
     guild: discord.Guild,
-):
-    channel = guild.get_channel(LOG_CHANNEL_ID)
+) -> Optional[discord.TextChannel]:
+
+    channel_id = database.get_guild_setting(
+        guild.id,
+        "log_channel_id",
+    )
+
+    if not channel_id:
+        return None
+
+    channel = guild.get_channel(channel_id)
 
     if isinstance(channel, discord.TextChannel):
         return channel
 
     try:
-        channel = await guild.fetch_channel(LOG_CHANNEL_ID)
+        channel = await guild.fetch_channel(channel_id)
 
         if isinstance(channel, discord.TextChannel):
             return channel
@@ -520,7 +277,8 @@ async def send_log(
     embed = discord.Embed(
         color=color_for(action),
         description=(
-            f"**{pretty_action(action)}** ・ {member.mention}\n"
+            f"**{pretty_action(action)}** ・ "
+            f"{member.mention}\n"
             f"> **Reason:** {reason}\n"
             f"> **By:** {moderator.mention}"
             f"{duration_line}"
@@ -530,68 +288,280 @@ async def send_log(
     )
 
     embed.set_footer(
-        text=f"Case #{case_id}  ·  Clouddyie's Cardboard Box"
+        text=f"Case #{case_id}  ·  {guild.name}"
     )
 
     try:
         await channel.send(embed=embed)
+
     except discord.HTTPException:
         pass
 
 
 # ============================================================
-# SLASH COMMAND ERROR HELPER
+# PERMISSION HELPERS
 # ============================================================
 
-async def respond_error(
-    interaction: discord.Interaction,
-    message: str,
-):
-    content = f"⚠️ {message}"
+def is_staff_member(
+    member: discord.Member,
+) -> bool:
 
-    if interaction.response.is_done():
-        await interaction.followup.send(
-            content,
-            ephemeral=True,
-        )
-    else:
-        await interaction.response.send_message(
-            content,
-            ephemeral=True,
-        )
+    if member.guild_permissions.administrator:
+        return True
 
+    staff_role_id = database.get_guild_setting(
+        member.guild.id,
+        "staff_role_id",
+    )
 
-# ============================================================
-# SLASH STAFF CHECK
-# ============================================================
-
-def staff_only():
-    async def predicate(
-        interaction: discord.Interaction,
-    ) -> bool:
-        if not interaction.guild:
-            return False
-
-        if not isinstance(
-            interaction.user,
-            discord.Member,
+    if staff_role_id:
+        if any(
+            role.id == staff_role_id
+            for role in member.roles
         ):
-            return False
+            return True
 
-        return is_staff(interaction.user)
+    permissions = member.guild_permissions
 
-    return app_commands.check(predicate)
+    return (
+        permissions.ban_members
+        or permissions.kick_members
+        or permissions.moderate_members
+        or permissions.manage_messages
+    )
+
+
+def can_act_on(
+    moderator: discord.Member,
+    target: discord.Member,
+) -> bool:
+
+    if target.id in {
+        moderator.id,
+        moderator.guild.owner_id,
+    }:
+        return False
+
+    if moderator.guild_permissions.administrator:
+        return True
+
+    return target.top_role < moderator.top_role
+
+
+async def bot_can_act_on(
+    guild: discord.Guild,
+    target: discord.Member,
+) -> bool:
+
+    me = guild.me
+
+    if me is None:
+        return False
+
+    if target.id == guild.owner_id:
+        return False
+
+    return target.top_role < me.top_role
 
 
 # ============================================================
-# ESCALATION
+# STAFF CHECK
+# ============================================================
+
+async def require_staff(
+    ctx: commands.Context,
+) -> bool:
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return False
+
+    if not isinstance(ctx.author, discord.Member):
+        return False
+
+    if not is_staff_member(ctx.author):
+        await respond_error(
+            ctx,
+            "You do not have permission to use this command.",
+        )
+        return False
+
+    return True
+
+
+# ============================================================
+# SETTINGS
+# ============================================================
+
+@bot.hybrid_command(
+    name="setlog",
+    description="Set the moderation log channel.",
+)
+@app_commands.describe(
+    channel="Channel where moderation logs should be sent.",
+)
+@commands.has_permissions(administrator=True)
+async def setlog(
+    ctx: commands.Context,
+    channel: discord.TextChannel,
+):
+    if ctx.guild is None:
+        return
+
+    database.set_guild_setting(
+        ctx.guild.id,
+        "log_channel_id",
+        channel.id,
+    )
+
+    await send_response(
+        ctx,
+        f"✅ Moderation logs will now be sent to "
+        f"{channel.mention}.",
+        ephemeral=True,
+    )
+
+
+@bot.hybrid_command(
+    name="setboost",
+    description="Set the boost notification channel.",
+)
+@app_commands.describe(
+    channel="Channel where boost notifications should be sent.",
+)
+@commands.has_permissions(administrator=True)
+async def setboost(
+    ctx: commands.Context,
+    channel: discord.TextChannel,
+):
+    if ctx.guild is None:
+        return
+
+    database.set_guild_setting(
+        ctx.guild.id,
+        "boost_channel_id",
+        channel.id,
+    )
+
+    await send_response(
+        ctx,
+        f"✅ Boost notifications will now use "
+        f"{channel.mention}.",
+        ephemeral=True,
+    )
+
+
+@bot.hybrid_command(
+    name="setstaff",
+    description="Set the staff role.",
+)
+@app_commands.describe(
+    role="Role that should be treated as staff.",
+)
+@commands.has_permissions(administrator=True)
+async def setstaff(
+    ctx: commands.Context,
+    role: discord.Role,
+):
+    if ctx.guild is None:
+        return
+
+    database.set_guild_setting(
+        ctx.guild.id,
+        "staff_role_id",
+        role.id,
+    )
+
+    await send_response(
+        ctx,
+        f"✅ Staff role set to {role.mention}.",
+        ephemeral=True,
+    )
+
+
+@bot.hybrid_command(
+    name="settings",
+    description="Show Delicate's settings for this server.",
+)
+@commands.has_permissions(administrator=True)
+async def settings(
+    ctx: commands.Context,
+):
+    if ctx.guild is None:
+        return
+
+    guild_id = ctx.guild.id
+
+    log_id = database.get_guild_setting(
+        guild_id,
+        "log_channel_id",
+    )
+
+    boost_id = database.get_guild_setting(
+        guild_id,
+        "boost_channel_id",
+    )
+
+    staff_id = database.get_guild_setting(
+        guild_id,
+        "staff_role_id",
+    )
+
+    embed = discord.Embed(
+        title=f"⚙️ Delicate Settings · {ctx.guild.name}",
+        color=COLOR_HISTORY,
+    )
+
+    embed.add_field(
+        name="Moderation logs",
+        value=(
+            f"<#{log_id}>"
+            if log_id
+            else "Not configured"
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="Boost channel",
+        value=(
+            f"<#{boost_id}>"
+            if boost_id
+            else "Not configured"
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="Staff role",
+        value=(
+            f"<@&{staff_id}>"
+            if staff_id
+            else "Using Discord moderation permissions"
+        ),
+        inline=False,
+    )
+
+    await send_response(
+        ctx,
+        embed=embed,
+        ephemeral=True,
+    )
+
+
+# ============================================================
+# WARNING ESCALATION
 # ============================================================
 
 async def apply_escalation(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     member: discord.Member,
     warning_count: int,
 ) -> Optional[int]:
+
     matching = [
         item
         for item in WARN_ESCALATION
@@ -606,8 +576,8 @@ async def apply_escalation(
         key=lambda item: item[0],
     )
 
-    guild = interaction.guild
-    moderator = interaction.user
+    guild = ctx.guild
+    moderator = ctx.author
 
     if guild is None:
         return None
@@ -615,13 +585,20 @@ async def apply_escalation(
     if not isinstance(moderator, discord.Member):
         return None
 
-    if not await bot_can_act_on(guild, member):
+    if not await bot_can_act_on(
+        guild,
+        member,
+    ):
         return None
 
     reason = (
-        f"Automatic escalation after "
+        "Automatic escalation after "
         f"{warning_count} active warnings."
     )
+
+    # --------------------------------------------------------
+    # AUTOMATIC MUTE
+    # --------------------------------------------------------
 
     if action == "MUTE":
         parsed = parse_duration(duration)
@@ -639,13 +616,14 @@ async def apply_escalation(
                 until,
                 reason=reason,
             )
+
         except (
             discord.Forbidden,
             discord.HTTPException,
         ):
             return None
 
-        case_id = create_case(
+        case_id = database.create_case(
             guild.id,
             "MUTE",
             member,
@@ -664,12 +642,16 @@ async def apply_escalation(
             reason,
             duration,
             extra=(
-                f"Automatic escalation at "
+                "Automatic escalation at "
                 f"{warning_count} warnings"
             ),
         )
 
         return case_id
+
+    # --------------------------------------------------------
+    # AUTOMATIC BAN
+    # --------------------------------------------------------
 
     if action == "BAN":
         try:
@@ -678,13 +660,14 @@ async def apply_escalation(
                 reason=reason,
                 delete_message_seconds=0,
             )
+
         except (
             discord.Forbidden,
             discord.HTTPException,
         ):
             return None
 
-        case_id = create_case(
+        case_id = database.create_case(
             guild.id,
             "BAN",
             member,
@@ -703,7 +686,7 @@ async def apply_escalation(
             reason,
             "perm",
             extra=(
-                f"Automatic escalation at "
+                "Automatic escalation at "
                 f"{warning_count} warnings"
             ),
         )
@@ -714,52 +697,52 @@ async def apply_escalation(
 
 
 # ============================================================
-# SLASH COMMANDS
+# BAN
 # ============================================================
 
-@bot.tree.command(
+@bot.hybrid_command(
     name="ban",
-    description="Ban a member, temporarily or permanently.",
+    description="Ban a member temporarily or permanently.",
 )
 @app_commands.describe(
     member="Member to ban",
     duration="30m, 2h, 7d, 1d12h, or perm",
     reason="Reason",
 )
-@staff_only()
 async def ban(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     member: discord.Member,
     duration: str,
     reason: str,
 ):
-    guild = interaction.guild
-    moderator = interaction.user
+    if not await require_staff(ctx):
+        return
+
+    guild = ctx.guild
+    moderator = ctx.author
 
     assert guild is not None
     assert isinstance(moderator, discord.Member)
 
     if not can_act_on(moderator, member):
         await respond_error(
-            interaction,
+            ctx,
             "You cannot moderate this member.",
         )
         return
 
     if not await bot_can_act_on(guild, member):
         await respond_error(
-            interaction,
+            ctx,
             "My role is not high enough to ban this member.",
         )
         return
 
     try:
         parsed = parse_duration(duration)
+
     except ValueError as exc:
-        await respond_error(
-            interaction,
-            str(exc),
-        )
+        await respond_error(ctx, str(exc))
         return
 
     expires_at = (
@@ -779,20 +762,22 @@ async def ban(
             reason=reason,
             delete_message_seconds=0,
         )
+
     except discord.Forbidden:
         await respond_error(
-            interaction,
+            ctx,
             "I don't have permission to ban that member.",
         )
         return
+
     except discord.HTTPException:
         await respond_error(
-            interaction,
+            ctx,
             "Discord returned an error while banning that member.",
         )
         return
 
-    case_id = create_case(
+    case_id = database.create_case(
         guild.id,
         "BAN",
         member,
@@ -812,7 +797,8 @@ async def ban(
         duration,
     )
 
-    await interaction.response.send_message(
+    await send_response(
+        ctx,
         f"🔨 Banned **{member}** for "
         f"**{format_duration(duration)}** · "
         f"Case `#{case_id}`.",
@@ -820,7 +806,11 @@ async def ban(
     )
 
 
-@bot.tree.command(
+# ============================================================
+# KICK
+# ============================================================
+
+@bot.hybrid_command(
     name="kick",
     description="Kick a member from the server.",
 )
@@ -828,28 +818,30 @@ async def ban(
     member="Member to kick",
     reason="Reason",
 )
-@staff_only()
 async def kick(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     member: discord.Member,
     reason: str,
 ):
-    guild = interaction.guild
-    moderator = interaction.user
+    if not await require_staff(ctx):
+        return
+
+    guild = ctx.guild
+    moderator = ctx.author
 
     assert guild is not None
     assert isinstance(moderator, discord.Member)
 
     if not can_act_on(moderator, member):
         await respond_error(
-            interaction,
+            ctx,
             "You cannot moderate this member.",
         )
         return
 
     if not await bot_can_act_on(guild, member):
         await respond_error(
-            interaction,
+            ctx,
             "My role is not high enough to kick this member.",
         )
         return
@@ -859,20 +851,22 @@ async def kick(
             member,
             reason=reason,
         )
+
     except discord.Forbidden:
         await respond_error(
-            interaction,
+            ctx,
             "I don't have permission to kick that member.",
         )
         return
+
     except discord.HTTPException:
         await respond_error(
-            interaction,
+            ctx,
             "Discord returned an error while kicking that member.",
         )
         return
 
-    case_id = create_case(
+    case_id = database.create_case(
         guild.id,
         "KICK",
         member,
@@ -889,68 +883,73 @@ async def kick(
         reason,
     )
 
-    await interaction.response.send_message(
+    await send_response(
+        ctx,
         f"👢 Kicked **{member}** · "
         f"Case `#{case_id}`.",
         ephemeral=True,
     )
 
 
-@bot.tree.command(
+# ============================================================
+# MUTE
+# ============================================================
+
+@bot.hybrid_command(
     name="mute",
-    description="Timeout a member for a set amount of time.",
+    description="Timeout a member.",
 )
 @app_commands.describe(
     member="Member to mute",
     duration="30m, 2h, 7d (max 28d)",
     reason="Reason",
 )
-@staff_only()
 async def mute(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     member: discord.Member,
     duration: str,
     reason: str,
 ):
-    guild = interaction.guild
-    moderator = interaction.user
+    if not await require_staff(ctx):
+        return
+
+    guild = ctx.guild
+    moderator = ctx.author
 
     assert guild is not None
     assert isinstance(moderator, discord.Member)
 
     if not can_act_on(moderator, member):
         await respond_error(
-            interaction,
+            ctx,
             "You cannot moderate this member.",
         )
         return
 
     if not await bot_can_act_on(guild, member):
         await respond_error(
-            interaction,
+            ctx,
             "My role is not high enough to timeout this member.",
         )
         return
 
     try:
         parsed = parse_duration(duration)
+
     except ValueError as exc:
-        await respond_error(
-            interaction,
-            str(exc),
-        )
+        await respond_error(ctx, str(exc))
         return
 
     if parsed is None:
         await respond_error(
-            interaction,
+            ctx,
             "Timeouts require a duration.",
         )
         return
 
     if parsed > timedelta(days=28):
         await respond_error(
-            interaction,
+            ctx,
             "Discord timeouts cannot exceed 28 days.",
         )
         return
@@ -962,20 +961,22 @@ async def mute(
             until,
             reason=reason,
         )
+
     except discord.Forbidden:
         await respond_error(
-            interaction,
+            ctx,
             "I don't have permission to timeout that member.",
         )
         return
+
     except discord.HTTPException:
         await respond_error(
-            interaction,
+            ctx,
             "Discord returned an error while muting that member.",
         )
         return
 
-    case_id = create_case(
+    case_id = database.create_case(
         guild.id,
         "MUTE",
         member,
@@ -995,14 +996,19 @@ async def mute(
         duration,
     )
 
-    await interaction.response.send_message(
-        f"🔇 Muted **{member}** for **{duration}** · "
-        f"Case `#{case_id}`.",
+    await send_response(
+        ctx,
+        f"🔇 Muted **{member}** for "
+        f"**{duration}** · Case `#{case_id}`.",
         ephemeral=True,
     )
 
 
-@bot.tree.command(
+# ============================================================
+# WARN
+# ============================================================
+
+@bot.hybrid_command(
     name="warn",
     description="Give a member a warning.",
 )
@@ -1010,38 +1016,40 @@ async def mute(
     member="Member to warn",
     reason="Reason for the warning",
 )
-@staff_only()
 async def warn(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     member: discord.Member,
     reason: str,
 ):
-    guild = interaction.guild
-    moderator = interaction.user
+    if not await require_staff(ctx):
+        return
+
+    guild = ctx.guild
+    moderator = ctx.author
 
     assert guild is not None
     assert isinstance(moderator, discord.Member)
 
     if not can_act_on(moderator, member):
         await respond_error(
-            interaction,
+            ctx,
             "You cannot warn this member.",
         )
         return
 
-    warning_id = add_warning(
+    warning_id = database.add_warning(
         guild.id,
         member,
         moderator,
         reason,
     )
 
-    count = active_warning_count(
+    count = database.active_warning_count(
         guild.id,
         member.id,
     )
 
-    case_id = create_case(
+    case_id = database.create_case(
         guild.id,
         "WARN",
         member,
@@ -1057,13 +1065,13 @@ async def warn(
         moderator,
         reason,
         extra=(
-            f"Active warnings: **{count}** "
-            f"· Warning #{warning_id}"
+            f"Active warnings: **{count}**"
+            f"  ·  Warning #{warning_id}"
         ),
     )
 
     escalation_case = await apply_escalation(
-        interaction,
+        ctx,
         member,
         count,
     )
@@ -1071,7 +1079,7 @@ async def warn(
     escalation_text = ""
 
     if escalation_case:
-        escalation = db.execute(
+        escalation = database.db.execute(
             """
             SELECT action, duration
             FROM cases
@@ -1080,7 +1088,7 @@ async def warn(
             (escalation_case,),
         ).fetchone()
 
-        if escalation:
+        if escalation is not None:
             escalation_text = (
                 f"\n⚡ **Automatic escalation:** "
                 f"{escalation['action']} "
@@ -1088,17 +1096,36 @@ async def warn(
                 f"· Case `#{escalation_case}`."
             )
 
-    await interaction.response.send_message(
+            # Your database already has this column.
+            database.db.execute(
+                """
+                UPDATE warnings
+                SET escalation_case_id = ?
+                WHERE id = ?
+                """,
+                (
+                    escalation_case,
+                    warning_id,
+                ),
+            )
+            database.db.commit()
+
+    await send_response(
+        ctx,
         f"⚠️ Warned **{member}**. "
-        f"They now have **{count} active warning(s)** · "
-        f"Warning `#{warning_id}` · "
-        f"Case `#{case_id}`."
+        f"They now have **{count} active warning(s)** "
+        f"· Warning `#{warning_id}` "
+        f"· Case `#{case_id}`."
         f"{escalation_text}",
         ephemeral=True,
     )
 
 
-@bot.tree.command(
+# ============================================================
+# UNBAN
+# ============================================================
+
+@bot.hybrid_command(
     name="unban",
     description="Unban a user by Discord ID.",
 )
@@ -1106,27 +1133,30 @@ async def warn(
     user_id="Discord user ID",
     reason="Reason",
 )
-@staff_only()
 async def unban(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     user_id: str,
     reason: str = "Ban removed",
 ):
-    guild = interaction.guild
-    moderator = interaction.user
+    if not await require_staff(ctx):
+        return
+
+    guild = ctx.guild
+    moderator = ctx.author
 
     assert guild is not None
     assert isinstance(moderator, discord.Member)
 
     try:
         user = await bot.fetch_user(int(user_id))
+
     except (
         ValueError,
         discord.NotFound,
         discord.HTTPException,
     ):
         await respond_error(
-            interaction,
+            ctx,
             "I couldn't find that Discord user ID.",
         )
         return
@@ -1136,26 +1166,29 @@ async def unban(
             user,
             reason=reason,
         )
+
     except discord.NotFound:
         await respond_error(
-            interaction,
+            ctx,
             "That user is not currently banned.",
         )
         return
+
     except discord.Forbidden:
         await respond_error(
-            interaction,
+            ctx,
             "I don't have permission to unban members.",
         )
         return
+
     except discord.HTTPException:
         await respond_error(
-            interaction,
+            ctx,
             "Discord returned an error while unbanning that user.",
         )
         return
 
-    case_id = create_case(
+    case_id = database.create_case(
         guild.id,
         "UNBAN",
         user,
@@ -1172,14 +1205,19 @@ async def unban(
         reason,
     )
 
-    await interaction.response.send_message(
+    await send_response(
+        ctx,
         f"↩️ Unbanned **{user}** · "
         f"Case `#{case_id}`.",
         ephemeral=True,
     )
 
 
-@bot.tree.command(
+# ============================================================
+# UNMUTE
+# ============================================================
+
+@bot.hybrid_command(
     name="unmute",
     description="Remove a member's timeout.",
 )
@@ -1187,28 +1225,30 @@ async def unban(
     member="Member whose timeout should be removed",
     reason="Reason",
 )
-@staff_only()
 async def unmute(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     member: discord.Member,
     reason: str = "Mute removed",
 ):
-    guild = interaction.guild
-    moderator = interaction.user
+    if not await require_staff(ctx):
+        return
+
+    guild = ctx.guild
+    moderator = ctx.author
 
     assert guild is not None
     assert isinstance(moderator, discord.Member)
 
     if not can_act_on(moderator, member):
         await respond_error(
-            interaction,
+            ctx,
             "You cannot moderate this member.",
         )
         return
 
     if not await bot_can_act_on(guild, member):
         await respond_error(
-            interaction,
+            ctx,
             "My role is not high enough to remove this timeout.",
         )
         return
@@ -1218,20 +1258,22 @@ async def unmute(
             None,
             reason=reason,
         )
+
     except discord.Forbidden:
         await respond_error(
-            interaction,
+            ctx,
             "I don't have permission to remove timeouts.",
         )
         return
+
     except discord.HTTPException:
         await respond_error(
-            interaction,
+            ctx,
             "Discord returned an error while removing the timeout.",
         )
         return
 
-    case_id = create_case(
+    case_id = database.create_case(
         guild.id,
         "UNMUTE",
         member,
@@ -1248,38 +1290,52 @@ async def unmute(
         reason,
     )
 
-    await interaction.response.send_message(
+    await send_response(
+        ctx,
         f"↩️ Removed **{member}**'s timeout · "
         f"Case `#{case_id}`.",
         ephemeral=True,
     )
 
 
-@bot.tree.command(
+# ============================================================
+# HISTORY
+# ============================================================
+
+@bot.hybrid_command(
     name="history",
-    description="Show a member's recent moderation history.",
+    description="Show a member's moderation history.",
 )
 @app_commands.describe(
     member="Member whose history you want to see",
     limit="Number of entries, 1-20",
 )
-@staff_only()
 async def history(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     member: discord.Member,
-    limit: app_commands.Range[int, 1, 20] = 10,
+    limit: int = 10,
 ):
-    guild = interaction.guild
+    if not await require_staff(ctx):
+        return
+
+    if limit < 1 or limit > 20:
+        await respond_error(
+            ctx,
+            "Limit must be between 1 and 20.",
+        )
+        return
+
+    guild = ctx.guild
 
     assert guild is not None
 
-    rows = get_user_history(
+    rows = database.get_user_history(
         guild.id,
         member.id,
         int(limit),
     )
 
-    warning_count = active_warning_count(
+    warning_count = database.active_warning_count(
         guild.id,
         member.id,
     )
@@ -1296,7 +1352,7 @@ async def history(
     )
 
     embed.set_thumbnail(
-        url=member.display_avatar.url
+        url=member.display_avatar.url,
     )
 
     if not rows:
@@ -1308,11 +1364,13 @@ async def history(
             ),
             inline=False,
         )
+
     else:
         lines = []
 
         for row in rows:
             action = row["action"]
+
             when = ts(row["created_at"])
 
             duration = (
@@ -1329,7 +1387,8 @@ async def history(
 
             lines.append(
                 f"{emoji_for(action)} "
-                f"**{action}** `#{row['id']}`"
+                f"**{action}** "
+                f"`#{row['id']}`"
                 f"{duration} · {when}\n"
                 f"> {row['reason']} · "
                 f"by <@{row['moderator_id']}> · "
@@ -1343,35 +1402,54 @@ async def history(
         )
 
     embed.set_footer(
-        text="Clouddyie's Cardboard Box  ·  Staff only"
+        text=f"{guild.name}  ·  Staff only"
     )
 
-    await interaction.response.send_message(
+    await send_response(
+        ctx,
         embed=embed,
         ephemeral=True,
     )
 
 
-@bot.tree.command(
+# ============================================================
+# CASE
+# ============================================================
+
+@bot.hybrid_command(
     name="case",
     description="Look up a moderation case.",
 )
 @app_commands.describe(
     case_id="Case number",
 )
-@staff_only()
 async def case(
-    interaction: discord.Interaction,
+    ctx: commands.Context,
     case_id: int,
 ):
-    row = db.execute(
-        "SELECT * FROM cases WHERE id = ?",
-        (case_id,),
+    if not await require_staff(ctx):
+        return
+
+    guild = ctx.guild
+
+    assert guild is not None
+
+    row = database.db.execute(
+        """
+        SELECT *
+        FROM cases
+        WHERE id = ?
+        AND guild_id = ?
+        """,
+        (
+            case_id,
+            guild.id,
+        ),
     ).fetchone()
 
     if row is None:
         await respond_error(
-            interaction,
+            ctx,
             f"Case `#{case_id}` does not exist.",
         )
         return
@@ -1383,825 +1461,56 @@ async def case(
         ),
         color=color_for(row["action"]),
         description=(
-            f"**User:** <@{row['user_id']}> "
+            f"**User:** "
+            f"<@{row['user_id']}> "
             f"(`{row['user_name']}`)\n"
-            f"**Moderator:** <@{row['moderator_id']}>\n"
-            f"**Reason:** {row['reason']}\n"
+            f"**Moderator:** "
+            f"<@{row['moderator_id']}>\n"
+            f"**Reason:** "
+            f"{row['reason']}\n"
             f"**Duration:** "
             f"{format_duration(row['duration']) if row['duration'] else '—'}\n"
-            f"**Created:** {ts(row['created_at'])}\n"
-            f"**Expires:** {ts(row['expires_at'])}\n"
+            f"**Created:** "
+            f"{ts(row['created_at'])}\n"
+            f"**Expires:** "
+            f"{ts(row['expires_at'])}\n"
             f"**Status:** "
             f"{'active' if row['active'] else 'closed'}"
         ),
     )
 
     embed.set_footer(
-        text="Clouddyie's Cardboard Box"
+        text=guild.name
     )
 
-    await interaction.response.send_message(
+    await send_response(
+        ctx,
         embed=embed,
         ephemeral=True,
     )
 
 
 # ============================================================
-# PREFIX COMMANDS
-# ============================================================
-
-@bot.command(name="ban")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_ban(
-    ctx: commands.Context,
-    member: discord.Member,
-    duration: str,
-    *,
-    reason: str,
-):
-    guild = ctx.guild
-    moderator = ctx.author
-
-    assert guild is not None
-    assert isinstance(moderator, discord.Member)
-
-    if not can_act_on(moderator, member):
-        await ctx.send(
-            "⚠️ You cannot moderate this member."
-        )
-        return
-
-    if not await bot_can_act_on(guild, member):
-        await ctx.send(
-            "⚠️ My role is not high enough to ban this member."
-        )
-        return
-
-    try:
-        parsed = parse_duration(duration)
-    except ValueError as exc:
-        await ctx.send(f"⚠️ {exc}")
-        return
-
-    expires_at = (
-        int(
-            (
-                datetime.now(timezone.utc)
-                + parsed
-            ).timestamp()
-        )
-        if parsed
-        else None
-    )
-
-    try:
-        await guild.ban(
-            member,
-            reason=reason,
-            delete_message_seconds=0,
-        )
-    except discord.Forbidden:
-        await ctx.send(
-            "⚠️ I don't have permission to ban that member."
-        )
-        return
-    except discord.HTTPException:
-        await ctx.send(
-            "⚠️ Discord returned an error while banning that member."
-        )
-        return
-
-    case_id = create_case(
-        guild.id,
-        "BAN",
-        member,
-        moderator,
-        reason,
-        duration,
-        expires_at,
-    )
-
-    await send_log(
-        guild,
-        case_id,
-        "BAN",
-        member,
-        moderator,
-        reason,
-        duration,
-    )
-
-    await ctx.send(
-        f"🔨 Banned **{member}** for "
-        f"**{format_duration(duration)}** · "
-        f"Case `#{case_id}`."
-    )
-
-
-@bot.command(name="kick")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_kick(
-    ctx: commands.Context,
-    member: discord.Member,
-    *,
-    reason: str,
-):
-    guild = ctx.guild
-    moderator = ctx.author
-
-    assert guild is not None
-    assert isinstance(moderator, discord.Member)
-
-    if not can_act_on(moderator, member):
-        await ctx.send(
-            "⚠️ You cannot moderate this member."
-        )
-        return
-
-    if not await bot_can_act_on(guild, member):
-        await ctx.send(
-            "⚠️ My role is not high enough to kick this member."
-        )
-        return
-
-    try:
-        await guild.kick(
-            member,
-            reason=reason,
-        )
-    except discord.Forbidden:
-        await ctx.send(
-            "⚠️ I don't have permission to kick that member."
-        )
-        return
-    except discord.HTTPException:
-        await ctx.send(
-            "⚠️ Discord returned an error while kicking that member."
-        )
-        return
-
-    case_id = create_case(
-        guild.id,
-        "KICK",
-        member,
-        moderator,
-        reason,
-    )
-
-    await send_log(
-        guild,
-        case_id,
-        "KICK",
-        member,
-        moderator,
-        reason,
-    )
-
-    await ctx.send(
-        f"👢 Kicked **{member}** · "
-        f"Case `#{case_id}`."
-    )
-
-
-@bot.command(name="mute")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_mute(
-    ctx: commands.Context,
-    member: discord.Member,
-    duration: str,
-    *,
-    reason: str,
-):
-    guild = ctx.guild
-    moderator = ctx.author
-
-    assert guild is not None
-    assert isinstance(moderator, discord.Member)
-
-    if not can_act_on(moderator, member):
-        await ctx.send(
-            "⚠️ You cannot moderate this member."
-        )
-        return
-
-    if not await bot_can_act_on(guild, member):
-        await ctx.send(
-            "⚠️ My role is not high enough to timeout this member."
-        )
-        return
-
-    try:
-        parsed = parse_duration(duration)
-    except ValueError as exc:
-        await ctx.send(f"⚠️ {exc}")
-        return
-
-    if parsed is None:
-        await ctx.send(
-            "⚠️ Timeouts require a duration."
-        )
-        return
-
-    if parsed > timedelta(days=28):
-        await ctx.send(
-            "⚠️ Discord timeouts cannot exceed 28 days."
-        )
-        return
-
-    until = discord.utils.utcnow() + parsed
-
-    try:
-        await member.timeout(
-            until,
-            reason=reason,
-        )
-    except discord.Forbidden:
-        await ctx.send(
-            "⚠️ I don't have permission to timeout that member."
-        )
-        return
-    except discord.HTTPException:
-        await ctx.send(
-            "⚠️ Discord returned an error while muting that member."
-        )
-        return
-
-    case_id = create_case(
-        guild.id,
-        "MUTE",
-        member,
-        moderator,
-        reason,
-        duration,
-        int(until.timestamp()),
-    )
-
-    await send_log(
-        guild,
-        case_id,
-        "MUTE",
-        member,
-        moderator,
-        reason,
-        duration,
-    )
-
-    await ctx.send(
-        f"🔇 Muted **{member}** for **{duration}** · "
-        f"Case `#{case_id}`."
-    )
-
-
-@bot.command(name="warn")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_warn(
-    ctx: commands.Context,
-    member: discord.Member,
-    *,
-    reason: str,
-):
-    guild = ctx.guild
-    moderator = ctx.author
-
-    assert guild is not None
-    assert isinstance(moderator, discord.Member)
-
-    if not can_act_on(moderator, member):
-        await ctx.send(
-            "⚠️ You cannot warn this member."
-        )
-        return
-
-    warning_id = add_warning(
-        guild.id,
-        member,
-        moderator,
-        reason,
-    )
-
-    count = active_warning_count(
-        guild.id,
-        member.id,
-    )
-
-    case_id = create_case(
-        guild.id,
-        "WARN",
-        member,
-        moderator,
-        reason,
-    )
-
-    await send_log(
-        guild,
-        case_id,
-        "WARN",
-        member,
-        moderator,
-        reason,
-        extra=(
-            f"Active warnings: **{count}** "
-            f"· Warning #{warning_id}"
-        ),
-    )
-
-    # Prefix commands don't have an Interaction,
-    # so escalation is handled directly here.
-
-    escalation_case = None
-
-    matching = [
-        item
-        for item in WARN_ESCALATION
-        if count >= item[0]
-    ]
-
-    if matching and await bot_can_act_on(guild, member):
-        _, action, duration = max(
-            matching,
-            key=lambda item: item[0],
-        )
-
-        escalation_reason = (
-            f"Automatic escalation after "
-            f"{count} active warnings."
-        )
-
-        if action == "MUTE":
-            parsed = parse_duration(duration)
-
-            if (
-                parsed is not None
-                and parsed <= timedelta(days=28)
-            ):
-                until = discord.utils.utcnow() + parsed
-
-                try:
-                    await member.timeout(
-                        until,
-                        reason=escalation_reason,
-                    )
-
-                    escalation_case = create_case(
-                        guild.id,
-                        "MUTE",
-                        member,
-                        moderator,
-                        escalation_reason,
-                        duration,
-                        int(until.timestamp()),
-                    )
-
-                    await send_log(
-                        guild,
-                        escalation_case,
-                        "MUTE",
-                        member,
-                        moderator,
-                        escalation_reason,
-                        duration,
-                        extra=(
-                            f"Automatic escalation at "
-                            f"{count} warnings"
-                        ),
-                    )
-                except (
-                    discord.Forbidden,
-                    discord.HTTPException,
-                ):
-                    pass
-
-        elif action == "BAN":
-            try:
-                await guild.ban(
-                    member,
-                    reason=escalation_reason,
-                    delete_message_seconds=0,
-                )
-
-                escalation_case = create_case(
-                    guild.id,
-                    "BAN",
-                    member,
-                    moderator,
-                    escalation_reason,
-                    "perm",
-                    None,
-                )
-
-                await send_log(
-                    guild,
-                    escalation_case,
-                    "BAN",
-                    member,
-                    moderator,
-                    escalation_reason,
-                    "perm",
-                    extra=(
-                        f"Automatic escalation at "
-                        f"{count} warnings"
-                    ),
-                )
-            except (
-                discord.Forbidden,
-                discord.HTTPException,
-            ):
-                pass
-
-    escalation_text = ""
-
-    if escalation_case:
-        escalation = db.execute(
-            """
-            SELECT action, duration
-            FROM cases
-            WHERE id = ?
-            """,
-            (escalation_case,),
-        ).fetchone()
-
-        if escalation:
-            escalation_text = (
-                f"\n⚡ **Automatic escalation:** "
-                f"{escalation['action']} "
-                f"({format_duration(escalation['duration'])}) "
-                f"· Case `#{escalation_case}`."
-            )
-
-    await ctx.send(
-        f"⚠️ Warned **{member}**. "
-        f"They now have **{count} active warning(s)** · "
-        f"Warning `#{warning_id}` · "
-        f"Case `#{case_id}`."
-        f"{escalation_text}"
-    )
-
-
-@bot.command(name="unban")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_unban(
-    ctx: commands.Context,
-    user_id: str,
-    *,
-    reason: str = "Ban removed",
-):
-    guild = ctx.guild
-    moderator = ctx.author
-
-    assert guild is not None
-    assert isinstance(moderator, discord.Member)
-
-    try:
-        user = await bot.fetch_user(int(user_id))
-    except (
-        ValueError,
-        discord.NotFound,
-        discord.HTTPException,
-    ):
-        await ctx.send(
-            "⚠️ I couldn't find that Discord user ID."
-        )
-        return
-
-    try:
-        await guild.unban(
-            user,
-            reason=reason,
-        )
-    except discord.NotFound:
-        await ctx.send(
-            "⚠️ That user is not currently banned."
-        )
-        return
-    except discord.Forbidden:
-        await ctx.send(
-            "⚠️ I don't have permission to unban members."
-        )
-        return
-    except discord.HTTPException:
-        await ctx.send(
-            "⚠️ Discord returned an error while unbanning that user."
-        )
-        return
-
-    case_id = create_case(
-        guild.id,
-        "UNBAN",
-        user,
-        moderator,
-        reason,
-    )
-
-    await send_log(
-        guild,
-        case_id,
-        "UNBAN",
-        user,
-        moderator,
-        reason,
-    )
-
-    await ctx.send(
-        f"↩️ Unbanned **{user}** · "
-        f"Case `#{case_id}`."
-    )
-
-
-@bot.command(name="unmute")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_unmute(
-    ctx: commands.Context,
-    member: discord.Member,
-    *,
-    reason: str = "Mute removed",
-):
-    guild = ctx.guild
-    moderator = ctx.author
-
-    assert guild is not None
-    assert isinstance(moderator, discord.Member)
-
-    if not can_act_on(moderator, member):
-        await ctx.send(
-            "⚠️ You cannot moderate this member."
-        )
-        return
-
-    if not await bot_can_act_on(guild, member):
-        await ctx.send(
-            "⚠️ My role is not high enough to remove this timeout."
-        )
-        return
-
-    try:
-        await member.timeout(
-            None,
-            reason=reason,
-        )
-    except discord.Forbidden:
-        await ctx.send(
-            "⚠️ I don't have permission to remove timeouts."
-        )
-        return
-    except discord.HTTPException:
-        await ctx.send(
-            "⚠️ Discord returned an error while removing the timeout."
-        )
-        return
-
-    case_id = create_case(
-        guild.id,
-        "UNMUTE",
-        member,
-        moderator,
-        reason,
-    )
-
-    await send_log(
-        guild,
-        case_id,
-        "UNMUTE",
-        member,
-        moderator,
-        reason,
-    )
-
-    await ctx.send(
-        f"↩️ Removed **{member}**'s timeout · "
-        f"Case `#{case_id}`."
-    )
-
-
-@bot.command(name="history")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_history(
-    ctx: commands.Context,
-    member: discord.Member,
-    limit: int = 10,
-):
-    guild = ctx.guild
-
-    assert guild is not None
-
-    limit = max(1, min(limit, 20))
-
-    rows = get_user_history(
-        guild.id,
-        member.id,
-        limit,
-    )
-
-    warning_count = active_warning_count(
-        guild.id,
-        member.id,
-    )
-
-    embed = discord.Embed(
-        title=f"📦 Moderation History · {member}",
-        description=(
-            f"**Member:** {member.mention}\n"
-            f"**Active warnings:** `{warning_count}`\n"
-            f"**Showing:** `{len(rows)}` recent entries"
-        ),
-        color=COLOR_HISTORY,
-        timestamp=datetime.now(timezone.utc),
-    )
-
-    embed.set_thumbnail(
-        url=member.display_avatar.url
-    )
-
-    if not rows:
-        embed.add_field(
-            name="No history",
-            value=(
-                "This member has no recorded "
-                "moderation history."
-            ),
-            inline=False,
-        )
-    else:
-        lines = []
-
-        for row in rows:
-            action = row["action"]
-            when = ts(row["created_at"])
-
-            duration = (
-                f" · `{format_duration(row['duration'])}`"
-                if row["duration"]
-                else ""
-            )
-
-            status = (
-                "active"
-                if row["active"]
-                else "closed"
-            )
-
-            lines.append(
-                f"{emoji_for(action)} "
-                f"**{action}** `#{row['id']}`"
-                f"{duration} · {when}\n"
-                f"> {row['reason']} · "
-                f"by <@{row['moderator_id']}> · "
-                f"`{status}`"
-            )
-
-        embed.add_field(
-            name="Recent activity",
-            value="\n\n".join(lines),
-            inline=False,
-        )
-
-    embed.set_footer(
-        text="Clouddyie's Cardboard Box  ·  Staff only"
-    )
-
-    await ctx.send(embed=embed)
-
-
-@bot.command(name="case")
-@commands.guild_only()
-@prefix_staff_check()
-async def prefix_case(
-    ctx: commands.Context,
-    case_id: int,
-):
-    row = db.execute(
-        "SELECT * FROM cases WHERE id = ?",
-        (case_id,),
-    ).fetchone()
-
-    if row is None:
-        await ctx.send(
-            f"⚠️ Case `#{case_id}` does not exist."
-        )
-        return
-
-    embed = discord.Embed(
-        title=(
-            f"📦 Case #{case_id} · "
-            f"{row['action']}"
-        ),
-        color=color_for(row["action"]),
-        description=(
-            f"**User:** <@{row['user_id']}> "
-            f"(`{row['user_name']}`)\n"
-            f"**Moderator:** <@{row['moderator_id']}>\n"
-            f"**Reason:** {row['reason']}\n"
-            f"**Duration:** "
-            f"{format_duration(row['duration']) if row['duration'] else '—'}\n"
-            f"**Created:** {ts(row['created_at'])}\n"
-            f"**Expires:** {ts(row['expires_at'])}\n"
-            f"**Status:** "
-            f"{'active' if row['active'] else 'closed'}"
-        ),
-    )
-
-    embed.set_footer(
-        text="Clouddyie's Cardboard Box"
-    )
-
-    await ctx.send(embed=embed)
-
-
-# ============================================================
-# PREFIX COMMAND ERROR HANDLER
-# ============================================================
-
-@bot.event
-async def on_command_error(
-    ctx: commands.Context,
-    error: commands.CommandError,
-):
-    if hasattr(ctx.command, "on_error"):
-        return
-
-    error = getattr(error, "original", error)
-
-    if isinstance(error, commands.CommandNotFound):
-        return
-
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send(
-            "⚠️ You don't have permission to use that command."
-        )
-        return
-
-    if isinstance(error, commands.CheckFailure):
-        await ctx.send(
-            "⚠️ You don't have permission to use that command."
-        )
-        return
-
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(
-            f"⚠️ You're missing `{error.param.name}`."
-        )
-        return
-
-    if isinstance(error, commands.BadArgument):
-        await ctx.send(
-            "⚠️ I couldn't understand one of the arguments. "
-            "Make sure you mentioned the correct member."
-        )
-        return
-
-    print(
-        f"Prefix command error in "
-        f"{getattr(ctx.command, 'name', 'unknown')}: {error}"
-    )
-
-
-# ============================================================
-# SLASH COMMAND ERROR HANDLER
-# ============================================================
-
-@bot.tree.error
-async def on_app_command_error(
-    interaction: discord.Interaction,
-    error: app_commands.AppCommandError,
-):
-    if isinstance(
-        error,
-        app_commands.CheckFailure,
-    ):
-        await respond_error(
-            interaction,
-            "You don't have permission to use that command.",
-        )
-        return
-
-    print(f"Slash command error: {error}")
-
-    await respond_error(
-        interaction,
-        "Something went wrong while running that command.",
-    )
-
-
-# ============================================================
-# TEMPORARY MODERATION EXPIRATION
+# EXPIRATION WORKER
 # ============================================================
 
 @tasks.loop(seconds=30)
 async def expiration_worker():
-    for row in get_expired_cases():
+
+    for row in database.get_expired_cases():
         guild = bot.get_guild(row["guild_id"])
 
         if guild is None:
             continue
 
         try:
+
+            # ------------------------------------------------
+            # TEMPORARY BAN
+            # ------------------------------------------------
+
             if row["action"] == "BAN":
+
                 try:
                     await guild.unban(
                         discord.Object(
@@ -2212,10 +1521,16 @@ async def expiration_worker():
                             f"| Case #{row['id']}"
                         ),
                     )
+
                 except discord.NotFound:
                     pass
 
+            # ------------------------------------------------
+            # TEMPORARY MUTE
+            # ------------------------------------------------
+
             elif row["action"] == "MUTE":
+
                 member = guild.get_member(
                     row["user_id"]
                 )
@@ -2229,10 +1544,13 @@ async def expiration_worker():
                                 f"| Case #{row['id']}"
                             ),
                         )
+
                     except discord.NotFound:
                         pass
 
-            close_case(row["id"])
+            database.close_case(
+                row["id"]
+            )
 
         except (
             discord.Forbidden,
@@ -2244,6 +1562,141 @@ async def expiration_worker():
 @expiration_worker.before_loop
 async def before_expiration_worker():
     await bot.wait_until_ready()
+
+
+# ============================================================
+# PREFIX COMMAND ERROR HANDLER
+# ============================================================
+
+@bot.event
+async def on_command_error(
+    ctx: commands.Context,
+    error: commands.CommandError,
+):
+
+    if isinstance(
+        error,
+        commands.CommandNotFound,
+    ):
+        return
+
+    if isinstance(
+        error,
+        commands.MissingPermissions,
+    ):
+        await respond_error(
+            ctx,
+            "You don't have permission to use that command.",
+        )
+        return
+
+    if isinstance(
+        error,
+        commands.MissingRequiredArgument,
+    ):
+        await respond_error(
+            ctx,
+            "You're missing a required argument. "
+            f"Try `d!{ctx.command.name if ctx.command else 'help'} --help`.",
+        )
+        return
+
+    if isinstance(
+        error,
+        commands.BadArgument,
+    ):
+        await respond_error(
+            ctx,
+            "One of the arguments you provided is invalid.",
+        )
+        return
+
+    print(
+        f"Command error in "
+        f"{getattr(ctx.command, 'name', 'unknown')}: "
+        f"{error}"
+    )
+
+
+# ============================================================
+# SLASH COMMAND ERROR HANDLER
+# ============================================================
+
+@bot.tree.error
+async def on_app_command_error(
+    interaction: discord.Interaction,
+    error: app_commands.AppCommandError,
+):
+
+    if isinstance(
+        error,
+        app_commands.MissingPermissions,
+    ):
+        message = (
+            "⚠️ You don't have permission "
+            "to use that command."
+        )
+
+    elif isinstance(
+        error,
+        app_commands.CheckFailure,
+    ):
+        message = (
+            "⚠️ You don't have permission "
+            "to use that command."
+        )
+
+    elif isinstance(
+        error,
+        app_commands.TransformerError,
+    ):
+        message = (
+            "⚠️ One of the arguments you provided "
+            "is invalid."
+        )
+
+    else:
+        print(
+            "Slash command error: "
+            f"{error}"
+        )
+        message = (
+            "⚠️ Something went wrong while "
+            "running that command."
+        )
+
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                message,
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                message,
+                ephemeral=True,
+            )
+
+    except discord.HTTPException:
+        pass
+
+
+# ============================================================
+# BOT EVENTS
+# ============================================================
+
+@bot.event
+async def on_ready():
+
+    if bot.user:
+        print(
+            f"Logged in as "
+            f"{bot.user} "
+            f"(ID: {bot.user.id})"
+        )
+
+    if not expiration_worker.is_running():
+        expiration_worker.start()
 
 
 # ============================================================
@@ -2263,62 +1716,36 @@ async def sync_commands():
         )
 
         print(
-            f"Synced {len(synced)} command(s) "
-            f"to guild {GUILD_ID}."
+            f"Synced {len(synced)} "
+            f"command(s) to guild "
+            f"{GUILD_ID}."
         )
 
     else:
         synced = await bot.tree.sync()
 
         print(
-            f"Synced {len(synced)} global command(s)."
+            f"Synced {len(synced)} "
+            f"global command(s)."
         )
 
 
 # ============================================================
-# READY
+# SETUP HOOK
 # ============================================================
 
 @bot.event
-async def on_ready():
-    await bot.change_presence(
-        status=discord.Status.online,
-        activity=discord.Activity(
-            type=discord.ActivityType.playing,
-            name="keeping things cozy ୨୧",
-        ),
-    )
-
-    if bot.user is not None:
-        print(
-            f"Logged in as {bot.user} "
-            f"(ID: {bot.user.id})"
-        )
-    else:
-        print(
-            "Logged in, but bot.user is None"
-        )
-
-    if not expiration_worker.is_running():
-        expiration_worker.start()
-
+async def setup_hook():
     await sync_commands()
 
 
 # ============================================================
-# STARTUP
+# MAIN
 # ============================================================
 
 async def main():
+
     async with bot:
-        await bot.load_extension(
-            "modules.boosts"
-        )
-
-        await bot.load_extension(
-            "modules.prefixes"
-        )
-
         await bot.start(BOT_TOKEN)
 
 
