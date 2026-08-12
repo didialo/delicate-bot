@@ -155,8 +155,8 @@ intents.message_content = True
 bot = commands.Bot(
     command_prefix="d!",
     intents=intents,
+    help_command=None,
 )
-
 
 # ============================================================
 # RESPONSE HELPERS
@@ -391,6 +391,97 @@ async def require_staff(
 
     return True
 
+# ============================================================
+# GENERAL COMMANDS
+# ============================================================
+
+@bot.hybrid_command(
+    name="help",
+    description="Show Delicate's commands and features.",
+)
+async def help_command(
+    ctx: commands.Context,
+):
+    """Show Delicate's help menu."""
+
+    embed = discord.Embed(
+        title="✦ delicate",
+        description=(
+            "a little moderation bot made to keep things "
+            "safe, calm, and cozy. ୨୧\n\n"
+            "**moderation**\n"
+            "`/ban` or `d!ban` — ban a member\n"
+            "`/kick` or `d!kick` — kick a member\n"
+            "`/mute` or `d!mute` — timeout a member\n"
+            "`/warn` or `d!warn` — warn a member\n"
+            "`/unban` or `d!unban` — unban a user\n"
+            "`/unmute` or `d!unmute` — remove a timeout\n"
+            "`/history` or `d!history` — view moderation history\n"
+            "`/case` or `d!case` — look up a moderation case\n\n"
+            "**server setup**\n"
+            "`/setlog` or `d!setlog` — set the moderation log channel\n"
+            "`/setboost` or `d!setboost` — set the boost channel\n"
+            "`/setstaff` or `d!setstaff` — set the staff role\n"
+            "`/settings` or `d!settings` — view Delicate's settings\n\n"
+            "**other**\n"
+            "`/invite` or `d!invite` — get Delicate's invite link\n"
+            "`/help` or `d!help` — show this menu"
+        ),
+        color=COLOR_HISTORY,
+    )
+
+    embed.set_footer(
+        text="delicate · keeping things cozy ୨୧"
+    )
+
+    await send_response(
+        ctx,
+        embed=embed,
+    )
+
+
+@bot.hybrid_command(
+    name="invite",
+    description="Get Delicate's invite link.",
+)
+async def invite(
+    ctx: commands.Context,
+):
+    """Show Delicate's invite link."""
+
+    if bot.user is None:
+        await send_response(
+            ctx,
+            "⚠️ Delicate isn't ready yet.",
+            ephemeral=True,
+        )
+        return
+
+    invite_url = discord.utils.oauth_url(
+        bot.user.id,
+        permissions=discord.Permissions.all(),
+        scopes=("bot", "applications.commands"),
+    )
+
+    embed = discord.Embed(
+        title="✦ bring delicate along",
+        description=(
+            "want me in another little corner of Discord? ♡\n\n"
+            f"[**invite delicate**]({invite_url})\n\n"
+            "i'll be ready to help with moderation, "
+            "server setup, and keeping things cozy. ୨୧"
+        ),
+        color=COLOR_HISTORY,
+    )
+
+    embed.set_footer(
+        text="delicate · keeping things cozy ୨୧"
+    )
+
+    await send_response(
+        ctx,
+        embed=embed,
+    )
 
 # ============================================================
 # SETTINGS
