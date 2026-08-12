@@ -1708,13 +1708,6 @@ async def on_ready():
     if not expiration_worker.is_running():
         expiration_worker.start()
 
-    await sync_commands()
-    
-# ============================================================
-# COMMAND SYNC
-# ============================================================
-
-async def sync_commands():
     if GUILD_ID:
         guild = discord.Object(id=GUILD_ID)
 
@@ -1725,6 +1718,33 @@ async def sync_commands():
         synced = await bot.tree.sync(
             guild=guild
         )
+
+        print(
+            f"Synced {len(synced)} "
+            f"command(s) to guild "
+            f"{GUILD_ID}."
+        )
+
+    else:
+        synced = await bot.tree.sync()
+
+        print(
+            f"Synced {len(synced)} "
+            f"global command(s)."
+        )
+
+    
+# ============================================================
+# COMMAND SYNC
+# ============================================================
+
+async def sync_commands():
+    if GUILD_ID:
+        guild = discord.Object(id=GUILD_ID)
+
+        bot.tree.copy_global_to(guild=guild)
+
+        synced = await bot.tree.sync(guild=guild)
 
         print(
             f"Synced {len(synced)} "
