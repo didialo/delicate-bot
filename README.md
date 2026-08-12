@@ -1,6 +1,6 @@
 # Delicate Bot 📦
 
-A Discord moderation bot made for **Clouddyie's Cardboard Box**.
+A Discord moderation bot made for **Clouddyie’s Cardboard Box**.
 
 Delicate provides moderation through both **Discord slash commands** and the **`d!` prefix**.
 
@@ -220,13 +220,13 @@ The database is initialized automatically when the module is imported.
 
 ### Important
 
-The bot imports the database package with:
+The bot imports the database implementation with:
 
 ```python
-import database
+from database import database
 ```
 
-The actual database implementation is located in:
+The actual database implementation is located at:
 
 ```text
 database/database.py
@@ -244,12 +244,12 @@ If you see:
 AttributeError: module 'database' has no attribute 'create_case'
 ```
 
-Python is probably importing the wrong `database` package/module.
+Python is probably importing the wrong database package or module.
 
 Check what Python is importing:
 
 ```powershell
-py -c "import database; print(database.__file__); print(hasattr(database, 'create_case')); print(hasattr(database, 'get_expired_cases')); print(hasattr(database, 'get_guild_setting'))"
+py -c "from database import database; print(database.__file__); print(hasattr(database, 'create_case')); print(hasattr(database, 'get_expired_cases')); print(hasattr(database, 'get_guild_setting'))"
 ```
 
 The functions should report:
@@ -260,7 +260,7 @@ True
 True
 ```
 
-If `database.__file__` is `None` and Python reports a namespace package, check that:
+If Python previously reported `database.__file__` as `None` and showed a namespace package, make sure:
 
 ```text
 database/__init__.py
@@ -302,6 +302,8 @@ COLOR_UNBAN=11976299
 COLOR_HISTORY=13224393
 ```
 
+`GUILD_ID` is optional and can be kept for your own development/testing configuration. Slash commands are synchronized globally for public server use.
+
 Never share your bot token.
 
 Never commit `.env` to GitHub.
@@ -319,7 +321,14 @@ Enable:
 * **Message Content Intent**
 * **Server Members Intent** when required by the bot's features
 
-If slash commands work but commands such as:
+For the bot to use slash commands in servers where it is installed, make sure the application is authorized with both:
+
+* `bot`
+* `applications.commands`
+
+If slash commands are missing, verify the installation scopes before troubleshooting the bot code.
+
+If prefix commands such as:
 
 `d!warn`
 
@@ -327,11 +336,7 @@ If slash commands work but commands such as:
 
 `d!kick`
 
-do nothing, check **Message Content Intent first**.
-
-The bot also needs the appropriate Discord permissions for the moderation actions it performs.
-
-Make sure the bot's role is above the members it needs to moderate.
+do nothing, check **Message Content Intent** first.
 
 ## ✦ Bot Permissions
 
@@ -347,6 +352,21 @@ Recommended permissions:
 
 The bot cannot moderate members whose highest role is above or equal to the bot's highest role.
 
+## ✦ Slash Command Sync
+
+Delicate synchronizes its slash commands **globally** so the public bot can be used across multiple servers.
+
+Commands are synchronized automatically when the bot starts.
+
+A successful startup should look similar to:
+
+```text
+Synced 12 global command(s).
+Logged in as ...
+```
+
+Global command updates can take some time to propagate through Discord.
+
 ## ✦ Running the Bot
 
 From the project directory:
@@ -354,15 +374,6 @@ From the project directory:
 ```powershell
 py bot.py
 ```
-
-A successful startup should look similar to:
-
-```text
-Synced commands to guild ...
-Logged in as ...
-```
-
-The exact number of commands may change as features are added.
 
 ## ✦ Testing
 
@@ -415,10 +426,13 @@ Check:
 
 Check:
 
-* `GUILD_ID` is correct.
-* The bot has the `applications.commands` scope.
-* The bot can access the guild.
-* Command synchronization succeeds during startup.
+1. The bot was installed with `applications.commands`.
+2. The bot is present in the server.
+3. Global command synchronization completed successfully.
+4. Discord has had enough time to propagate the global commands.
+5. The Discord client is up to date.
+
+If commands appear on one Discord client but not another, restart or update the affected client.
 
 ### The bot cannot moderate someone
 
@@ -485,7 +499,7 @@ The SQLite database may contain moderation records, so treat it as private data.
 Delicate currently provides:
 
 * ✅ Prefix moderation commands
-* ✅ Slash moderation commands
+* ✅ Global slash moderation commands
 * ✅ SQLite persistence
 * ✅ Moderation cases
 * ✅ Persistent warnings
@@ -499,10 +513,11 @@ Delicate currently provides:
 * ✅ Moderation logging
 * ✅ Staff permission checks
 * ✅ Configurable server prefixes
+* ✅ Public multi-server slash-command support
 
 ## ✦ Credits
 
-Made for **Clouddyie's Cardboard Box**.
+Made for **Clouddyie’s Cardboard Box**.
 
 Built with:
 
