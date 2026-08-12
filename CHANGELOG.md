@@ -1,126 +1,113 @@
-DELICATE CHANGELOG
-==================
+# Changelog
 
-[2026-08-12] — v2.0
+All notable changes to Delicate are documented here.
 
-NEW
----
-- Added separate database module for persistent moderation data.
-- Added per-server guild settings.
-- Added configurable moderation log channels.
-- Added configurable boost notification channels.
-- Added configurable staff roles.
-- Added persistent moderation cases.
-- Added persistent warnings.
-- Added automatic warning escalation.
-- Added automatic expiration for temporary bans.
-- Added automatic expiration for temporary timeouts.
-- Added moderation history.
-- Added individual case lookup.
-- Added slash commands.
-- Added prefix commands using d!.
-- Added configurable server prefixes.
-- Kept d! available as a fallback prefix.
-- Added server settings command.
-- Added moderation command error handling.
-- Added Discord presence/status.
+## [Unreleased]
 
-MODERATION
-----------
-- Ban members temporarily or permanently.
-- Kick members.
-- Timeout members.
-- Remove member timeouts.
-- Unban users by Discord ID.
-- Warn members.
-- View member moderation history.
-- View individual moderation cases.
+### Added
 
-WARNING ESCALATION
-------------------
-- 3 active warnings = 1 hour timeout.
-- 5 active warnings = 1 day timeout.
-- 7 active warnings = permanent ban.
+* 🎟️ Added a private support-ticket system.
+* Added `/setticket` and `d!setticket` for configuring and posting ticket panels.
+* Added `/ticket` and `d!ticket` for reposting configured ticket panels.
+* Added `/closeticket` and `d!closeticket` for closing tickets.
+* Added persistent ticket buttons for opening and closing tickets.
+* Added private ticket-channel permissions for ticket creators and staff.
+* Added prevention of multiple simultaneous tickets per user.
+* Added automatic ticket transcripts.
+* Added transcript delivery to the configured moderation log channel.
+* Added invite welcome DMs when Delicate joins a server.
+* Added audit-log based inviter detection.
+* Added a temporary `/testinvitedm` / `d!testinvitedm` command for testing invite DMs without inviting Delicate into additional servers.
+* Added `/invite` and `d!invite` for generating Delicate's bot invite link.
+* Added a custom `/help` and `d!help` command.
+* Added `/ping` and `d!ping` for checking response and WebSocket latency.
+* Added automatic loading of the ticket module during startup.
 
-DATABASE
---------
-- Added SQLite persistence.
-- Added cases table.
-- Added warnings table.
-- Added guild_settings table.
-- Added database indexes.
-- Added automatic database initialization.
-- Existing moderation.db files are preserved.
+### Changed
 
-PREFIX SYSTEM
---------------
-- Default prefix: d!
-- Added server-specific prefixes.
-- Added prefix reset support.
-- d! remains available after changing a server prefix.
-- Prefix changes require Manage Server permission.
+* Disabled discord.py's default `help` command so Delicate can provide its own hybrid help command.
+* Improved slash-command synchronization.
+* Added cleanup for stale guild-scoped command registrations in the configured development guild.
+* Prevented duplicate command synchronization during startup.
+* Organized ticket functionality into `modules/tickets.py`.
+* Extended server settings to include ticket configuration.
+* Updated boost functionality to continue using Delicate's module system.
+* Improved startup loading so ticket functionality is initialized before command synchronization.
 
-COMMANDS
---------
-Slash commands:
-- /ban
-- /kick
-- /mute
-- /unmute
-- /warn
-- /unban
-- /history
-- /case
-- /setlog
-- /setboost
-- /setstaff
-- /settings
+### Fixed
 
-Prefix commands:
-- d!ban
-- d!kick
-- d!mute
-- d!unmute
-- d!warn
-- d!unban
-- d!history
-- d!case
-- d!setlog
-- d!setboost
-- d!setstaff
-- d!settings
-- d!prefix
+* Fixed duplicate slash commands caused by stale guild-scoped registrations.
+* Fixed duplicate `Tickets` cog loading during startup.
+* Fixed the invite-DM test command returning `Unknown interaction` when the response took too long.
+* Fixed ticket button emoji validation errors by using supported Discord emojis.
+* Fixed the custom `help` command colliding with discord.py's built-in help command.
+* Fixed command startup performance by eliminating redundant global command synchronization.
 
-FIXES
------
-- Fixed the database import structure.
-- Fixed the database package being loaded as a namespace package.
-- Fixed missing database functions such as create_case().
-- Fixed prefix commands not responding without Message Content Intent.
-- Fixed moderation commands using the wrong database connection.
-- Fixed moderation settings being tied to hard-coded channel IDs.
-- Fixed moderation data not being separated cleanly from bot logic.
-- Fixed temporary moderation expiration handling.
-- Fixed hybrid command responses for prefix and slash commands.
-- Restored the Delicate Discord presence.
-- Improved command synchronization.
+## Previous Features
 
-IMPORTANT
----------
-- Message Content Intent must be enabled for prefix commands.
-- The bot's role must be above members it needs to moderate.
-- The database package must contain:
+### Moderation
 
-  database/
-  ├── __init__.py
-  └── database.py
+* Added temporary and permanent bans.
+* Added member kicking.
+* Added Discord timeouts / mutes.
+* Added unmute support.
+* Added user unban support.
+* Added warning commands.
+* Added automatic warning escalation.
+* Added moderation cases.
+* Added moderation history.
+* Added case lookup.
 
-- Do not delete moderation.db unless you intentionally want to remove
-  existing moderation data.
+### Logging
 
-UPCOMING
---------
-- Global slash-command synchronization for public servers.
-- Additional moderation features.
-- More configurable server settings.
-- More Delicate modules and public-bot improvements.
+* Added configurable moderation log channels.
+* Added moderation embeds.
+* Added case numbers and timestamps.
+* Added automatic escalation information to logs.
+
+### Database
+
+* Added SQLite persistence.
+* Added per-server settings.
+* Added warning storage.
+* Added moderation case storage.
+* Added automatic expiration tracking.
+* Added database health checks.
+
+### Boosts
+
+* Added boost announcement support.
+* Added boost-channel configuration.
+* Added `/testboost` and `d!testboost`.
+* Added automatic detection of new server boosts.
+* Added Cardboard Box themed boost embeds.
+
+### Prefixes
+
+* Added the `d!` prefix.
+* Added configurable server-specific prefixes.
+* Kept `d!` available as the fallback prefix.
+
+### Slash Commands
+
+* Added global slash-command synchronization.
+* Added support for public multi-server slash commands.
+* Added development-guild cleanup for stale command registrations.
+
+## Notes
+
+Delicate is actively evolving for **Clouddyie's Cardboard Box**.
+
+Before releasing a new version, test:
+
+* moderation commands
+* prefix commands
+* slash commands
+* ticket creation and closing
+* ticket transcripts
+* boost notifications
+* invite welcome DMs
+* command synchronization
+* database persistence
+
+**Delicate — soft colors, hard moderation.** 📦🎀
