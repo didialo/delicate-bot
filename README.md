@@ -1,57 +1,61 @@
 # Delicate Bot 📦
 
-A Discord moderation and server-management bot made for **Clouddyie’s Cardboard Box**.
+A cozy Discord moderation and server-management bot built to help communities stay **safe, organized, and comfortable**.
 
-Delicate provides moderation through both **Discord slash commands** and the **`d!` prefix**, alongside server settings, moderation logs, warning escalation, boost notifications, tickets, invite handling, and utility commands.
+Delicate provides moderation through both **Discord slash commands** and the **`d!` prefix**, along with server configuration, boost notifications, private support tickets, invite welcome messages, and useful server utilities.
 
 ## ✦ Features
 
-* 🔨 Ban members temporarily or permanently
+* 🔨 Ban members
 * 👢 Kick members
 * 🔇 Timeout / mute members
 * ↩️ Remove timeouts
 * ↩️ Unban users
 * ⚠️ Warn members
-* ⚡ Automatic warning escalation
-* 📦 Persistent moderation history
+* 📦 Moderation history
 * 🔎 Case lookup
+* ⚡ Automatic warning escalation
 * 📝 Moderation logs
 * ⚙️ Per-server settings
 * ⏱️ Automatic expiration of temporary bans and mutes
+* 🪽 Server boost notifications
 * 🎟️ Private support tickets
 * 📄 Ticket transcripts
-* 🪽 Server invite welcome DMs
+* ✦ Invite welcome DMs
+* 📋 Help command
 * 🔗 Bot invite command
-* ✦ Automatic help command
 * 🏓 Ping / latency command
-* 🪽 Boost notifications
 * `/` slash commands
 * `d!` prefix commands
 
 ## ✦ Commands
 
-All main commands are available through both slash commands and the `d!` prefix.
+All moderation and utility commands work with both slash commands and prefix commands.
 
-| Slash          | Prefix          | Description                                     |
-| -------------- | --------------- | ----------------------------------------------- |
-| `/ban`         | `d!ban`         | Ban a member temporarily or permanently         |
-| `/kick`        | `d!kick`        | Kick a member                                   |
-| `/mute`        | `d!mute`        | Timeout a member                                |
-| `/unmute`      | `d!unmute`      | Remove a member's timeout                       |
-| `/warn`        | `d!warn`        | Give a member a warning                         |
-| `/unban`       | `d!unban`       | Unban a user by Discord ID                      |
-| `/history`     | `d!history`     | View moderation history                         |
-| `/case`        | `d!case`        | Look up a moderation case                       |
-| `/setlog`      | `d!setlog`      | Set the moderation log channel                  |
-| `/setboost`    | `d!setboost`    | Set the boost notification channel              |
-| `/setstaff`    | `d!setstaff`    | Set the staff role                              |
-| `/settings`    | `d!settings`    | View server settings                            |
-| `/setticket`   | `d!setticket`   | Configure and post the ticket panel             |
-| `/ticket`      | `d!ticket`      | Post the configured ticket panel                |
-| `/closeticket` | `d!closeticket` | Close the current ticket                        |
-| `/help`        | `d!help`        | Show Delicate's command list                    |
-| `/invite`      | `d!invite`      | Get Delicate's invite link                      |
-| `/ping`        | `d!ping`        | Check Delicate's response and WebSocket latency |
+| Slash           | Prefix           | Description                             |
+| --------------- | ---------------- | --------------------------------------- |
+| `/ban`          | `d!ban`          | Ban a member temporarily or permanently |
+| `/kick`         | `d!kick`         | Kick a member                           |
+| `/mute`         | `d!mute`         | Timeout a member                        |
+| `/unmute`       | `d!unmute`       | Remove a member's timeout               |
+| `/warn`         | `d!warn`         | Give a member a warning                 |
+| `/unban`        | `d!unban`        | Unban a user by Discord ID              |
+| `/history`      | `d!history`      | View moderation history                 |
+| `/case`         | `d!case`         | Look up a moderation case               |
+| `/setlog`       | `d!setlog`       | Set the moderation log channel          |
+| `/setboost`     | `d!setboost`     | Set the boost notification channel      |
+| `/setstaff`     | `d!setstaff`     | Set the staff role                      |
+| `/settings`     | `d!settings`     | View server settings                    |
+| `/setticket`    | `d!setticket`    | Set the ticket panel channel            |
+| `/ticket`       | `d!ticket`       | Post the ticket panel                   |
+| `/closeticket`  | `d!closeticket`  | Close the current ticket                |
+| `/help`         | `d!help`         | Show Delicate's commands                |
+| `/invite`       | `d!invite`       | Get Delicate's invite link              |
+| `/ping`         | `d!ping`         | Check Delicate's latency                |
+| `/testboost`    | `d!testboost`    | Test the server boost announcement      |
+| `/testinvitedm` | `d!testinvitedm` | Test Delicate's invite welcome DM       |
+
+Testing commands are intended for development and testing.
 
 ## ✦ Prefix
 
@@ -61,14 +65,15 @@ The default prefix is:
 
 Examples:
 
-```text
-d!warn @user spamming
-d!kick @user breaking the rules
-d!mute @user 2h being disruptive
-d!history @user
-d!case 12
-d!ping
-```
+`d!warn @user spamming`
+
+`d!kick @user breaking the rules`
+
+`d!mute @user 2h being disruptive`
+
+`d!history @user`
+
+`d!case 12`
 
 The `d!` prefix remains available even when a server uses another configured prefix.
 
@@ -78,21 +83,21 @@ The prefix system supports server-specific prefixes.
 
 Show the current prefix:
 
-```text
-d!prefix
-```
+`d!prefix`
 
 Change the prefix:
 
-```text
-d!prefix set c!
-```
+`d!prefix set c!`
 
 Reset the prefix:
 
-```text
-d!prefix reset
-```
+`d!prefix reset`
+
+For example, a server using `c!` can use:
+
+`c!warn @user spamming`
+
+and `d!warn @user spamming` will still work.
 
 Changing the prefix requires **Manage Server** permission.
 
@@ -106,24 +111,23 @@ Warnings automatically escalate when a member reaches certain numbers of active 
 |               5 | 1 day timeout    |
 |               7 | Permanent ban    |
 
-Escalations are stored as moderation cases and can appear in moderation logs.
+The escalation is stored as a moderation case and can appear in the moderation logs.
 
 ## ✦ Temporary Moderation
 
 Supported duration formats include:
 
-```text
-30m
-2h
-7d
-1d12h
-```
+`30m`
+
+`2h`
+
+`7d`
+
+`1d12h`
 
 Permanent bans can use:
 
-```text
-perm
-```
+`perm`
 
 Supported units:
 
@@ -143,17 +147,19 @@ Every moderation case receives a case number.
 
 View recent history:
 
-```text
-/history @user
-d!history @user
-```
+`/history @user`
+
+or:
+
+`d!history @user`
 
 Look up a case:
 
-```text
-/case 42
-d!case 42
-```
+`/case 42`
+
+or:
+
+`d!case 42`
 
 Moderation history is stored persistently in SQLite.
 
@@ -161,12 +167,13 @@ Moderation history is stored persistently in SQLite.
 
 Administrators can configure the moderation log channel with:
 
-```text
-/setlog #channel
-d!setlog #channel
-```
+`/setlog #channel`
 
-Logs can contain:
+or:
+
+`d!setlog #channel`
+
+Logs contain information such as:
 
 * Action
 * Target
@@ -175,134 +182,139 @@ Logs can contain:
 * Duration
 * Case number
 * Timestamp
-* Automatic escalation details
+* Automatic escalation details when applicable
 
-## ✦ Server Settings
-
-Delicate stores server configuration separately for each server.
-
-Available settings include:
-
-* Moderation log channel
-* Boost notification channel
-* Staff role
-* Ticket panel channel
-
-Configure them with:
-
-```text
-/setlog
-/setboost
-/setstaff
-/setticket
-```
-
-View them with:
-
-```text
-/settings
-d!settings
-```
+Ticket transcripts are also sent to the configured moderation log channel when tickets are closed.
 
 ## ✦ Boost Notifications
 
-Delicate can announce new server boosts in a configured channel.
+Delicate can announce when a member starts boosting the server.
 
-Configure the channel with:
+Configure the boost notification channel with:
 
-```text
-/setboost #channel
-d!setboost #channel
-```
+`/setboost #channel`
 
-Boost announcements include the booster, current boost count, and server boost level.
+or:
 
-A test command is also available:
+`d!setboost #channel`
 
-```text
-/testboost
-d!testboost
-```
+Test the boost announcement with:
 
-## ✦ Tickets
+`/testboost`
 
-Delicate includes a private support-ticket system.
+or:
 
-Configure and post the ticket panel with:
+`d!testboost`
 
-```text
-/setticket #channel
-d!setticket #channel
-```
+Boost notifications include the member, current boost count, and current server boost level.
 
-The panel provides an **Open a Ticket** button.
+## ✦ Support Tickets
 
-When a user opens a ticket:
+Delicate includes a private support ticket system.
 
-* A private text channel is created
-* Only the ticket creator and staff can access it
-* Delicate posts a welcome message
-* A **Close Ticket** button is provided
-* Users cannot open multiple tickets at the same time
+Configure the ticket panel channel with:
 
-Tickets can be closed through the button or:
+`/setticket #channel`
 
-```text
-/closeticket
-d!closeticket
-```
+or:
 
-When a ticket closes, Delicate can send a transcript to the configured moderation log channel.
+`d!setticket #channel`
 
-## ✦ Invite Welcome DMs
+Post the ticket panel with:
 
-When Delicate is invited to a server, it attempts to identify the user who added it through the server audit log.
+`/ticket`
 
-The inviter receives a private welcome DM containing:
+or:
 
-* The server Delicate joined
-* A short introduction
-* Basic setup commands
-* Information about Delicate's features
+`d!ticket`
 
-This requires Delicate to have permission to view the server audit log.
+Members can then use the **🎟️ open a ticket** button.
 
-If the inviter cannot be identified or their DMs are unavailable, Delicate safely skips the DM.
+Each ticket:
 
-## ✦ Invite Command
+* Creates a private text channel
+* Is visible to the ticket author
+* Is visible to the configured staff role
+* Prevents multiple open tickets from the same user
+* Includes a **🔒 close ticket** button
 
-Users can get Delicate's installation link with:
+Tickets can also be closed with:
 
-```text
-/invite
-d!invite
-```
+`/closeticket`
 
-The generated link includes the required bot and application-command scopes.
+or:
+
+`d!closeticket`
+
+When a ticket is closed, Delicate generates a text transcript and sends it to the configured moderation log channel.
+
+## ✦ Invite Welcome DM
+
+When Delicate joins a new server, it attempts to identify the person who invited it through the server audit log.
+
+The inviter receives a private welcome message containing:
+
+* The server name
+* A Delicate welcome message
+* Basic setup instructions
+* Server configuration commands
+
+Delicate requires **View Audit Log** permission to reliably identify the inviter.
+
+If the inviter cannot be determined or their DMs are unavailable, Delicate safely continues without crashing.
+
+The invite DM can be tested without adding Delicate to another server:
+
+`/testinvitedm`
+
+or:
+
+`d!testinvitedm`
 
 ## ✦ Help Command
 
-Delicate includes a custom help command:
+Use:
 
-```text
-/help
-d!help
-```
+`/help`
 
-The help system is intended to show Delicate's available commands and descriptions.
+or:
 
-## ✦ Ping
+`d!help`
 
-Delicate provides a simple latency check:
+to display Delicate's available commands.
 
-```text
-/ping
-d!ping
-```
+## ✦ Invite Command
 
-The response displays:
+Use:
 
-* Response time
+`/invite`
+
+or:
+
+`d!invite`
+
+to get Delicate's invite link.
+
+The generated invite includes both:
+
+* `bot`
+* `applications.commands`
+
+## ✦ Ping Command
+
+Use:
+
+`/ping`
+
+or:
+
+`d!ping`
+
+to check Delicate's latency.
+
+The command reports:
+
+* Command response time
 * Discord WebSocket latency
 
 Example:
@@ -314,15 +326,38 @@ Example:
 ♡ websocket · `200ms`
 ```
 
+## ✦ Server Settings
+
+Delicate stores configuration separately for each server.
+
+Available settings:
+
+* Moderation log channel
+* Boost notification channel
+* Staff role
+* Ticket panel channel
+
+Configure them with:
+
+`/setlog`
+
+`/setboost`
+
+`/setstaff`
+
+`/setticket`
+
+View them with:
+
+`/settings`
+
 ## ✦ Database
 
 Delicate uses SQLite.
 
 The default database file is:
 
-```text
-moderation.db
-```
+`moderation.db`
 
 The project uses a database package:
 
@@ -340,8 +375,13 @@ The database module handles:
 * Case expiration
 * Moderation history
 * Server settings
+* Ticket configuration
 * Database initialization
 * Database health checks
+
+The database is initialized automatically when the module is imported.
+
+### Important
 
 The bot imports the database implementation with:
 
@@ -349,40 +389,26 @@ The bot imports the database implementation with:
 from database import database
 ```
 
-Keep the `database/` package intact.
-
-## ✦ Modules
-
-Delicate can organize optional systems into modules.
-
-Current module structure includes:
+The actual database implementation is located at:
 
 ```text
-modules/
-├── __init__.py
-├── boosts.py
-└── tickets.py
+database/database.py
 ```
 
-The ticket system is loaded during bot startup.
+Make sure `database/__init__.py` exists.
+
+Do not replace the database package with an unrelated `database.py` file in the project root.
 
 ## ✦ Requirements
 
 * Python 3.10+
-* discord.py 2.7+
+* discord.py
 * python-dotenv
-* SQLite
 
 Install dependencies:
 
 ```powershell
 py -m pip install -U discord.py python-dotenv
-```
-
-The project also includes:
-
-```text
-requirements.txt
 ```
 
 ## ✦ Environment
@@ -405,7 +431,7 @@ COLOR_UNBAN=11976299
 COLOR_HISTORY=13224393
 ```
 
-`GUILD_ID` is used for development/testing configuration and stale guild-command cleanup.
+`GUILD_ID` is optional and can be kept for development/testing configuration. Slash commands are synchronized globally for public server use.
 
 Never share your bot token.
 
@@ -413,45 +439,50 @@ Never commit `.env` to GitHub.
 
 ## ✦ Discord Developer Portal
 
-For prefix commands to work, **Message Content Intent** must be enabled.
+For prefix commands to work, **Message Content Intent must be enabled**.
 
 Go to:
 
 **Discord Developer Portal → Your Application → Bot → Privileged Gateway Intents**
 
-Enable the intents required by your enabled features.
+Enable:
 
-For public slash-command use, make sure the bot is authorized with:
+* **Message Content Intent**
+* **Server Members Intent** when required by the bot's features
+
+For slash commands, make sure the application is authorized with both:
 
 * `bot`
 * `applications.commands`
 
+For invite detection, Delicate also needs:
+
+* **View Audit Log**
+
 ## ✦ Bot Permissions
 
-Recommended permissions include:
+Recommended permissions:
 
 * View Channels
 * Send Messages
 * Embed Links
 * Read Message History
 * Manage Channels
-* View Audit Log
+* Manage Messages
 * Kick Members
 * Ban Members
 * Moderate Members
-* Manage Messages
-
-Ticket creation requires permissions to create and manage ticket channels.
+* View Audit Log
 
 The bot cannot moderate members whose highest role is above or equal to the bot's highest role.
 
+Ticket creation also requires permission to create channels and manage their permission overwrites.
+
 ## ✦ Slash Command Sync
 
-Delicate synchronizes its slash commands **globally** for public use.
+Delicate synchronizes its slash commands globally when the bot starts.
 
-Commands are synchronized automatically when the bot starts.
-
-A normal startup should look similar to:
+A successful startup should look similar to:
 
 ```text
 🎟️ Tickets cog loaded.
@@ -459,7 +490,7 @@ Synced 19 global command(s).
 Logged in as ...
 ```
 
-The development guild cleanup runs separately to remove stale guild-scoped command registrations.
+Delicate also clears stale development-server command registrations when `GUILD_ID` is configured.
 
 Global command updates can take some time to propagate through Discord.
 
@@ -473,7 +504,7 @@ py bot.py
 
 ## ✦ Testing
 
-### Moderation
+### Slash commands
 
 ```text
 /warn
@@ -484,40 +515,44 @@ py bot.py
 /unban
 /history
 /case
-```
-
-### Tickets
-
-```text
+/settings
 /setticket
 /ticket
 /closeticket
-```
-
-### Utilities
-
-```text
 /help
 /invite
 /ping
 ```
 
-### Boosts
+### Prefix commands
+
+```text
+d!warn
+d!kick
+d!ban
+d!mute
+d!unmute
+d!unban
+d!history
+d!case
+d!settings
+d!setticket
+d!ticket
+d!closeticket
+d!help
+d!invite
+d!ping
+```
+
+### Testing commands
 
 ```text
 /testboost
-```
+d!testboost
 
-### Invite DM testing
-
-The temporary owner-only testing command is:
-
-```text
 /testinvitedm
 d!testinvitedm
 ```
-
-This simulates the invite welcome DM without requiring Delicate to be invited into another server.
 
 ## ✦ Common Problems
 
@@ -525,9 +560,9 @@ This simulates the invite welcome DM without requiring Delicate to be invited in
 
 Check:
 
-1. Message Content Intent is enabled.
-2. The bot can read messages in the channel.
-3. The bot was restarted after changing intents.
+1. Message Content Intent is enabled in the Discord Developer Portal.
+2. The bot has permission to view and read messages in the channel.
+3. The bot was restarted after changing its intents.
 4. You are using `d!` or the server's configured prefix.
 
 ### Slash commands are missing
@@ -536,42 +571,29 @@ Check:
 
 1. The bot was installed with `applications.commands`.
 2. The bot is present in the server.
-3. Global synchronization completed successfully.
-4. Discord has had enough time to propagate global commands.
+3. Global command synchronization completed successfully.
+4. Discord has had enough time to propagate the global commands.
 5. The Discord client is up to date.
 
 If commands appear on one Discord client but not another, restart or update the affected client.
 
-### Commands appear twice
-
-This usually indicates stale guild-scoped registrations.
-
-Delicate clears the configured development guild's old command registrations during startup before syncing the current global commands.
-
-### Ticket creation fails
+### Tickets cannot be created
 
 Check:
 
-* Manage Channels
-* View Channels
-* Send Messages
-* Read Message History
-* Embed Links
-* The bot's ability to create channels in the chosen category
+* The ticket panel was configured with `/setticket` or `d!setticket`
+* The bot can create channels
+* The bot can manage channel permissions
+* The configured staff role exists
+* The configured ticket panel channel still exists
 
-Also make sure a ticket panel has been configured with:
+### Invite welcome DMs do not arrive
 
-```text
-/setticket #channel
-```
+Check:
 
-### Ticket transcripts are missing
-
-Make sure a moderation log channel is configured:
-
-```text
-/setlog #channel
-```
+* Delicate has permission to view the audit log
+* The inviter allows DMs
+* Discord created a usable audit-log entry for the bot addition
 
 ### The bot cannot moderate someone
 
@@ -583,17 +605,9 @@ Check:
 * Bot role hierarchy
 * Target member's role hierarchy
 
-### Invite welcome DM does not arrive
-
-Check:
-
-* Delicate can view the server audit log
-* The inviter allows direct messages from the server
-* The audit-log entry is available after Delicate joins
-
 ### Database errors
 
-Make sure the project contains:
+If you receive an error involving a database function, make sure the `database/` package contains:
 
 ```text
 database/
@@ -601,34 +615,7 @@ database/
 └── database.py
 ```
 
-Keep `moderation.db` intact.
-
-Delicate uses SQLite and initializes its tables automatically.
-
-## ✦ Project Structure
-
-A typical project looks like:
-
-```text
-delicate-bot/
-│
-├── bot.py
-├── moderation.db
-├── .env
-├── .env.example
-├── README.md
-├── CHANGELOG.md
-├── requirements.txt
-│
-├── database/
-│   ├── __init__.py
-│   └── database.py
-│
-└── modules/
-    ├── __init__.py
-    ├── boosts.py
-    └── tickets.py
-```
+and that `database/database.py` contains the required functions.
 
 ## ✦ Security
 
@@ -646,7 +633,7 @@ BOT_TOKEN
 
 If your bot token is accidentally exposed, regenerate it immediately in the Discord Developer Portal.
 
-The SQLite database may contain moderation records and ticket information, so treat it as private data.
+The SQLite database may contain moderation records and ticket transcripts, so treat it as private data.
 
 ## ✦ Current Status
 
@@ -669,17 +656,16 @@ Delicate currently provides:
 * ✅ Configurable server prefixes
 * ✅ Public multi-server slash-command support
 * ✅ Boost notifications
-* ✅ Invite welcome DMs
-* ✅ Bot invite command
-* ✅ Custom help command
-* ✅ Ping command
 * ✅ Private support tickets
-* ✅ Ticket close buttons
 * ✅ Ticket transcripts
+* ✅ Invite welcome DMs
+* ✅ Help command
+* ✅ Invite command
+* ✅ Ping command
 
 ## ✦ Credits
 
-Made for **Clouddyie’s Cardboard Box**.
+Built for Discord communities that want moderation without losing a little personality. 📦🎀
 
 Built with:
 
