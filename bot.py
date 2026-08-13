@@ -819,6 +819,8 @@ async def help_command(
 # PING
 # ============================================================
 
+import subprocess
+
 @bot.hybrid_command(
     name="ping",
     description="Check Delicate's connection and system status.",
@@ -894,12 +896,34 @@ async def ping(ctx: commands.Context) -> None:
     # System information
     # --------------------------------------------------------
 
-    processor = (
-        platform.processor()
-        or platform.uname().processor
-        or platform.machine()
-        or "Unknown processor"
-    )
+    try:
+        cpu_result = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "(Get-CimInstance Win32_Processor).Name",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+
+        processor = cpu_result.stdout.strip()
+
+    except (
+        subprocess.SubprocessError,
+        OSError,
+    ):
+        processor = ""
+
+    if not processor:
+        processor = (
+            platform.processor()
+            or platform.uname().processor
+            or platform.machine()
+            or "Unknown processor"
+        )
 
     operating_system = (
         f"{platform.system()} "
