@@ -6,121 +6,74 @@ By using or interacting with the Delicate Discord bot, you agree to these Terms 
 
 ## 1. Purpose
 
-Delicate is a Discord moderation bot designed to assist server staff with moderation and server administration.
+The bot is used to assist with moderation and server management within Clouddie's Cardboard Box.
 
-Features may include:
-
-* Warnings
-* Timeouts
-* Kicks
-* Bans
-* Moderation history
-* Staff moderation logs
-* Automatic warning escalation
-
-Delicate is provided as a moderation tool and does not replace the judgment or responsibility of server administrators and staff.
+It may provide features including warnings, timeouts, kicks, bans, moderation history, staff logs, and server verification.
 
 ## 2. Moderation
 
-Authorized server staff may use Delicate to take moderation actions against members in accordance with the rules and policies of their Discord server.
+Authorized server staff may use the bot to take moderation actions against members in accordance with the server's rules.
 
 The bot may automatically apply moderation actions when configured warning thresholds are reached.
 
-Server administrators are responsible for configuring appropriate moderation rules and escalation thresholds.
-
 ## 3. Moderation Records
 
-Delicate may store information necessary for moderation, including:
+The bot may store information necessary for moderation, including:
 
-* Discord user ID and username
-* Discord server ID
-* Moderation actions
-* Warning records
-* Moderation reasons
-* Action durations
-* Case and warning numbers
-* Dates and times of moderation actions
-* Discord user ID and username of the staff member who performed an action
+- Discord user ID and username
+- Moderation actions
+- Warning records
+- Moderation reasons
+- Action durations
+- Case numbers
+- Dates and times
+- The Discord account of the staff member who performed an action
 
 These records are used for server moderation and administration.
 
-Additional information may be processed by Discord as part of providing the Discord platform and its services.
-
 ## 4. Staff Access
 
-Moderation records are intended to be accessible only to authorized server staff and administrators.
+Moderation records are intended for authorized server staff.
 
 Attempting to access, modify, delete, or interfere with moderation records without authorization is prohibited.
 
-Server administrators are responsible for controlling access to their Delicate database and hosting environment.
-
 ## 5. Automated Moderation
 
-Servers may configure automatic escalation based on active warnings.
+The server may configure automatic escalation based on active warnings.
 
-For example, reaching a configured number of warnings may result in an automatic timeout or permanent ban.
+For example, reaching a specified number of warnings may result in an automatic timeout or ban.
 
-Automatic actions are determined by the server's configuration and may be changed by authorized server administrators.
+These thresholds may be changed by server administration.
 
-## 6. Responsible Use
+## 6. Availability
 
-Users and server administrators must use Delicate in accordance with:
+The bot is provided on an "as-is" basis.
 
-* Discord's Terms of Service
-* Discord's Community Guidelines
-* Applicable laws and regulations
-* The rules of the Discord server where Delicate is deployed
-
-Delicate must not intentionally be used to harass, abuse, discriminate against, or unlawfully target users.
+The bot may occasionally be unavailable because of maintenance, technical problems, hosting issues, Discord outages, or other circumstances.
 
 ## 7. Misuse
 
 You must not attempt to:
 
-* Exploit or abuse the bot
-* Bypass its permission or role-hierarchy checks
-* Gain unauthorized access
-* Manipulate moderation records without authorization
-* Interfere with the bot or its database
-* Intentionally disrupt the bot's operation
-* Use moderation information for purposes unrelated to legitimate server administration
+- Exploit or abuse the bot
+- Bypass its permission system
+- Gain unauthorized access
+- Manipulate moderation records
+- Interfere with the bot or its database
+- Use moderation information for purposes unrelated to server administration
 
-## 8. Availability
+## 8. Changes
 
-Delicate is provided on an **"as-is"** and **"as-available"** basis.
+Server administration may modify these Terms, the bot, or its features when necessary.
 
-The bot may occasionally be unavailable because of:
+Continued use of the bot after changes means you accept the updated Terms.
 
-* Maintenance
-* Software bugs
-* Technical problems
-* Hosting issues
-* Discord outages
-* Network problems
-* Other circumstances outside the bot operator's control
+## 9. Agreement
 
-No guarantee is made that the bot will always be available or error-free.
+By using the bot or clicking the server's verification button, you acknowledge that you have read and agreed to these Terms of Use.
 
-## 9. Changes
-
-The bot operator or server administration may modify these Terms, the bot, or its features when necessary.
-
-The **Last updated** date will be changed when significant changes are made.
-
-Continued use of Delicate after updated Terms are published constitutes acceptance of the updated Terms where legally applicable.
-
-## 10. Disclaimer
-
-Delicate is a moderation tool and does not guarantee that moderation actions will always be correct, appropriate, or successful.
-
-Server administrators and staff remain responsible for the moderation decisions they make using the bot.
-
-## 11. Agreement
-
-By using Delicate, you acknowledge that you have read and agreed to these Terms of Use where such agreement is legally applicable.
-
-If you do not agree with these Terms, you should not use Delicate.
+If you do not agree, please do not use the bot or participate in its verification system.
 
 ---
 
-📦 **Clouddyiе's Cardboard Box**
+📦 **Clouddie's Cardboard Box**

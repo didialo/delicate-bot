@@ -729,45 +729,30 @@ async def require_staff(
     name="invite",
     description="Get Delicate's invite link.",
 )
-async def invite(
-    ctx: commands.Context,
-):
-    """Show Delicate's invite link."""
-
-    if bot.user is None:
-        await send_response(
-            ctx,
-            "⚠️ Delicate isn't ready yet.",
-            ephemeral=True,
-        )
-        return
-
-    invite_url = discord.utils.oauth_url(
-        bot.user.id,
-        permissions=discord.Permissions.all(),
-        scopes=("bot", "applications.commands"),
+async def invite(ctx: commands.Context):
+    invite_url = (
+        "https://discord.com/oauth2/authorize"
+        "?client_id=1536625530441441280"
+        "&permissions=8"
+        "&integration_type=0"
+        "&scope=bot+applications.commands"
     )
 
     embed = discord.Embed(
-        title="✦ bring delicate along",
         description=(
-            "want me in another little corner of Discord? ♡\n\n"
+            "**✦ bring delicate along**\n"
+            "**want me in another little corner of Discord? ♡**\n\n"
             f"[**invite delicate**]({invite_url})\n\n"
-            "i'll be ready to help with moderation, "
-            "server setup, and keeping things cozy. ୨୧"
-        ),
-        color=COLOR_HISTORY,
+            "**i'll be ready to help with moderation, server setup, "
+            "and keeping things cozy. ୨୧**"
+        )
     )
 
     embed.set_footer(
         text="delicate · keeping things cozy ୨୧"
     )
 
-    await send_response(
-        ctx,
-        embed=embed,
-    )
-
+    await ctx.send(embed=embed)
 # ============================================================
 # HELP
 # ============================================================
@@ -2406,6 +2391,189 @@ async def setup_hook():
         f"Synced {len(synced)} "
         f"global command(s)."
     )
+
+# ============================================================
+# ABOUT
+# ============================================================
+
+@bot.hybrid_command(
+    name="about",
+    description="A little bit about Delicate.",
+)
+async def about_command(ctx: commands.Context) -> None:
+    """Show Delicate's generated information card."""
+
+    guild_count = len(bot.guilds)
+
+    user_count = sum(
+        guild.member_count or 0
+        for guild in bot.guilds
+    )
+
+    command_count = len(bot.commands)
+
+    latency = (
+        round(bot.latency * 1000)
+        if bot.latency is not None
+        else 0
+    )
+
+    # --------------------------------------------------------
+    # DATABASE STATISTICS
+    # --------------------------------------------------------
+
+    try:
+        case_row = database.db.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(active), 0) AS active
+            FROM cases
+            """
+        ).fetchone()
+
+        warning_row = database.db.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(active), 0) AS active
+            FROM warnings
+            """
+        ).fetchone()
+
+        tracked_users_row = database.db.execute(
+            """
+            SELECT COUNT(DISTINCT user_id) AS count
+            FROM (
+                SELECT user_id FROM cases
+                UNION
+                SELECT user_id FROM warnings
+            )
+            """
+        ).fetchone()
+
+        database_status = "online"
+
+        total_cases = int(
+            case_row["total"] or 0
+            if case_row
+            else 0
+        )
+
+        active_cases = int(
+            case_row["active"] or 0
+            if case_row
+            else 0
+        )
+
+        total_warnings = int(
+            warning_row["total"] or 0
+            if warning_row
+            else 0
+        )
+
+        active_warnings = int(
+            warning_row["active"] or 0
+            if warning_row
+            else 0
+        )
+
+        tracked_users = int(
+            tracked_users_row["count"] or 0
+            if tracked_users_row
+            else 0
+        )
+
+    except Exception:
+        database_status = "error"
+
+        total_cases = 0
+        active_cases = 0
+        total_warnings = 0
+        active_warnings = 0
+        tracked_users = 0
+
+    # --------------------------------------------------------
+    # EMBED
+    # --------------------------------------------------------
+
+    embed = discord.Embed(
+        color=0xE8DFF5,
+        description=(
+            "✦ **delicate** ୨୧\n\n"
+            "♡ a little information about me.\n"
+            "୨୧ built to keep things safe, simple, and sweet.\n\n"
+
+            "╭───────────────╮\n"
+            f"│ ✦ **servers**  `{guild_count:,}`\n"
+            f"│ ♡ **users**    `{user_count:,}`\n"
+            f"│ ୨୧ **commands** `{command_count:,}`\n"
+            f"│ ✦ **latency**  `{latency}ms`\n"
+            "╰───────────────╯"
+        ),
+        timestamp=datetime.now(timezone.utc),
+    )
+
+    if bot.user is not None:
+        embed.set_author(
+            name="delicate",
+            icon_url=bot.user.display_avatar.url,
+        )
+
+    embed.add_field(
+        name="♡ about",
+        value=(
+            "Delicate is a moderation bot focused on "
+            "keeping servers organized, protected, and easy to manage."
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="✦ moderation database",
+        value=(
+            f"**Cases:** `{total_cases:,}`\n"
+            f"**Active cases:** `{active_cases:,}`\n"
+            f"**Warnings:** `{total_warnings:,}`\n"
+            f"**Active warnings:** `{active_warnings:,}`\n"
+            f"**Tracked users:** `{tracked_users:,}`"
+        ),
+        inline=False,
+    )
+
+    embed.add_field(
+        name="୨୧ database status",
+        value=f"`{database_status}`",
+        inline=True,
+    )
+
+    embed.add_field(
+        name="✦ developer",
+        value="`Clouddyie`",
+        inline=True,
+    )
+
+    embed.add_field(
+        name="୨୧ library",
+        value="`discord.py`",
+        inline=True,
+    )
+
+    embed.add_field(
+        name="♡ command style",
+        value="`hybrid`",
+        inline=True,
+    )
+
+    embed.set_footer(
+        text="delicate  ·  made softly, built carefully  ♡"
+    )
+
+    await send_response(
+        ctx,
+        embed=embed,
+    )
+
 # ============================================================
 # MAIN
 # ============================================================
