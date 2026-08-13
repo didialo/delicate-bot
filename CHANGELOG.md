@@ -1,19 +1,13 @@
-
-# CHANGELOG.md
-
-```md
 # Changelog
 
 All notable changes to **Delicate Bot** are documented here.
 
-## [Unreleased]
-
-### Added
+## Added
 
 * 🎟️ Private support ticket system
-* `/setticket` / `d!setticket`
-* `/ticket` / `d!ticket`
-* `/closeticket` / `d!closeticket`
+* `/setticket` and `d!setticket`
+* `/ticket` and `d!ticket`
+* `/closeticket` and `d!closeticket`
 * Ticket open button
 * Ticket close button
 * Private ticket channels
@@ -22,16 +16,16 @@ All notable changes to **Delicate Bot** are documented here.
 * Automatic ticket transcripts
 * Transcript logging
 * ✦ Invite welcome DMs when Delicate joins a server
-* `/testinvitedm` / `d!testinvitedm`
-* `/help` / `d!help`
-* `/invite` / `d!invite`
-* `/ping` / `d!ping`
+* `/testinvitedm` and `d!testinvitedm`
+* `/help` and `d!help`
+* `/invite` and `d!invite`
+* `/ping` and `d!ping`
 * Ticket panel configuration
 * Ticket panel settings
 * WebSocket latency reporting
 * Command response-time reporting
 
-### Changed
+## Changed
 
 * Improved global slash-command synchronization
 * Removed stale guild-scoped command registrations
@@ -43,10 +37,11 @@ All notable changes to **Delicate Bot** are documented here.
 * Improved invite detection using the Discord audit log
 * Improved invite-DM failure handling
 * Improved prefix and slash compatibility for utility commands
-* Improved server settings to include ticket configuration
+* Added ticket configuration to server settings
 * Improved startup command registration
+* Improved startup stability when loading modules and commands
 
-### Fixed
+## Fixed
 
 * Fixed duplicated slash commands
 * Fixed duplicate Tickets cog loading
@@ -57,6 +52,8 @@ All notable changes to **Delicate Bot** are documented here.
 * Fixed invite-DM testing with both slash and prefix commands
 * Fixed duplicate global command synchronization
 * Fixed startup errors caused by loading the Tickets cog twice
+
+---
 
 ## Previous Features
 
@@ -116,11 +113,32 @@ All notable changes to **Delicate Bot** are documented here.
 * `/ping`
 * `d!ping`
 
-## Development Notes
+### Invite Handling
 
-Delicate is currently in active development and is being prepared for public verification.
+* Automatic inviter detection when Delicate joins a server
+* Private welcome DM for the inviter
+* Audit-log based invite detection
+* Safe handling for unavailable DMs
+* `/testinvitedm`
+* `d!testinvitedm`
 
-Testing commands currently include:
+### Support Tickets
+
+* Configurable ticket panel
+* Private ticket channels
+* Staff access
+* One-ticket-per-user protection
+* Ticket close button
+* Ticket transcripts
+* Transcript logging
+
+---
+
+## Current Status
+
+Delicate is publicly available and continues to receive improvements and new features.
+
+Development commands currently include:
 
 ```text
 /testboost
@@ -128,3 +146,18 @@ d!testboost
 
 /testinvitedm
 d!testinvitedm
+```
+
+These commands are intended for development and testing and may be restricted or removed in future releases.
+
+---
+
+## Current Startup
+
+A normal startup should look similar to:
+
+```text
+🎟️ Tickets cog loaded.
+Synced 19 global command(s).
+Logged in as ...
+```
