@@ -32,6 +32,11 @@ COLOR_HISTORY = int(os.getenv("COLOR_HISTORY", "13224393"))
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is missing from .env")
 
+# ============================================================
+# BOT START TIME
+# ============================================================
+
+bot_start_time = datetime.now(timezone.utc)
 
 # ============================================================
 # WARNING ESCALATION
@@ -810,56 +815,166 @@ async def help_command(
         embed=embed,
     )
 
-    # ============================================================
+# ============================================================
 # PING
 # ============================================================
 
 @bot.hybrid_command(
     name="ping",
-    description="Check Delicate's response time.",
+    description="Check Delicate's connection and system status.",
 )
-async def ping(
-    ctx: commands.Context,
-):
-    """Show Delicate's latency."""
+async def ping(ctx: commands.Context) -> None:
+    """Show Delicate's current connection and system information."""
 
-    start = discord.utils.utcnow()
+    import platform
+    import time
+    import psutil
 
-    if ctx.interaction is not None:
-        await ctx.interaction.response.defer()
-        response_time = (
-            discord.utils.utcnow() - start
-        ).total_seconds() * 1000
+    start = time.perf_counter()
 
-        websocket = bot.latency * 1000
+    # --------------------------------------------------------
+    # Gateway latency
+    # --------------------------------------------------------
 
-        await ctx.interaction.edit_original_response(
-            content=(
-                "✦ **delicate is awake** ୨୧\n\n"
-                f"♡ response · `{response_time:.0f}ms`\n"
-                f"♡ websocket · `{websocket:.0f}ms`"
-            )
+    gateway_ms = round(bot.latency * 1000)
+
+    # --------------------------------------------------------
+    # Uptime
+    # --------------------------------------------------------
+
+    uptime_delta = (
+        datetime.now(timezone.utc) - bot_start_time
+    )
+
+    total_seconds = max(
+        0,
+        int(uptime_delta.total_seconds()),
+    )
+
+    days, remainder = divmod(
+        total_seconds,
+        86400,
+    )
+    hours, remainder = divmod(
+        remainder,
+        3600,
+    )
+    minutes, seconds = divmod(
+        remainder,
+        60,
+    )
+
+    uptime_parts = []
+
+    if days:
+        uptime_parts.append(f"{days}d")
+
+    if hours or days:
+        uptime_parts.append(f"{hours}h")
+
+    if minutes or hours or days:
+        uptime_parts.append(f"{minutes}m")
+
+    uptime_parts.append(f"{seconds}s")
+
+    uptime = " ".join(uptime_parts)
+
+    # --------------------------------------------------------
+    # Delicate process memory
+    # --------------------------------------------------------
+
+    process = psutil.Process()
+
+    memory_mb = (
+        process.memory_info().rss
+        / (1024 ** 2)
+    )
+
+    # --------------------------------------------------------
+    # System information
+    # --------------------------------------------------------
+
+    processor = (
+        platform.processor()
+        or platform.uname().processor
+        or platform.machine()
+        or "Unknown processor"
+    )
+
+    operating_system = (
+        f"{platform.system()} "
+        f"{platform.release()}"
+    )
+
+    python_version = platform.python_version()
+
+    # --------------------------------------------------------
+    # Processing time
+    # --------------------------------------------------------
+
+    response_ms = max(
+        1,
+        round(
+            (time.perf_counter() - start) * 1000
+        ),
+    )
+
+    # --------------------------------------------------------
+    # Embed
+    # --------------------------------------------------------
+
+    embed = discord.Embed(
+        color=0xE8DFF5,
+        description=(
+            "📦 **delicate · little status box ୨୧**\n\n"
+            "♡ everything seems to be packed safely.\n\n"
+            "╭───────────────╮\n"
+            f"│ ✦ **processing** `{response_ms}ms`\n"
+            f"│ ♡ **gateway**    `{gateway_ms}ms`\n"
+            f"│ ୨୧ **uptime**     `{uptime}`\n"
+            "╰───────────────╯"
+        ),
+        timestamp=datetime.now(timezone.utc),
+    )
+
+    if bot.user is not None:
+        embed.set_author(
+            name="delicate",
+            icon_url=bot.user.display_avatar.url,
         )
 
-    else:
-        message = await ctx.send(
-            "✦ **delicate is awake** ୨୧\n\n"
-            "♡ checking..."
-        )
+    embed.add_field(
+        name="♡ runtime",
+        value=(
+            f"`Python {python_version}`\n"
+            f"`discord.py {discord.__version__}`"
+        ),
+        inline=True,
+    )
 
-        response_time = (
-            discord.utils.utcnow() - start
-        ).total_seconds() * 1000
+    embed.add_field(
+        name="✦ memory",
+        value=f"`{memory_mb:.2f} MB used`",
+        inline=True,
+    )
 
-        websocket = bot.latency * 1000
+    embed.add_field(
+        name="୨୧ environment",
+        value=(
+            f"`{processor}`\n"
+            f"`{operating_system}`"
+        ),
+        inline=False,
+    )
 
-        await message.edit(
-            content=(
-                "✦ **delicate is awake** ୨୧\n\n"
-                f"♡ response · `{response_time:.0f}ms`\n"
-                f"♡ websocket · `{websocket:.0f}ms`"
-            )
-        )
+    embed.set_footer(
+        text="delicate  ·  systems cozy & operational  ♡"
+    )
+
+    await send_response(
+        ctx,
+        embed=embed,
+    )
 
 # ============================================================
 # SETTINGS
