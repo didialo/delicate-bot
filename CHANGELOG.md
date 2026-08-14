@@ -1,63 +1,54 @@
 # Changelog
 
-All notable changes to **Delicate Bot** are documented here.
+All notable changes to **Delicate** are documented here.
 
-## Added
+## August 14, 2026
 
-* 🎟️ Private support ticket system
-* `/setticket` and `d!setticket`
-* `/ticket` and `d!ticket`
-* `/closeticket` and `d!closeticket`
-* Ticket open button
-* Ticket close button
-* Private ticket channels
-* One-open-ticket-per-user protection
-* Staff-role access to tickets
-* Automatic ticket transcripts
-* Transcript logging
-* ✦ Invite welcome DMs when Delicate joins a server
-* `/testinvitedm` and `d!testinvitedm`
-* `/help` and `d!help`
-* `/invite` and `d!invite`
-* `/ping` and `d!ping`
-* Ticket panel configuration
-* Ticket panel settings
-* WebSocket latency reporting
-* Command response-time reporting
+### Added
 
-## Changed
+* 💡 Added the suggestion system
+* `/suggest` and `d!suggest`
+* `/setsuggest` and `d!setsuggest`
+* Persistent suggestion storage
+* Suggestion IDs and statuses
+* Suggestion message tracking
+* 🐌 Added `/slowmode` and `d!slowmode`
+* 🛡️ Added the developer guild blacklist system
+* ⚙️ Added additional persistent guild settings
+* 🖥️ Added system information and runtime reporting
+* 📡 Added WebSocket latency reporting
+* 🔌 Added the developer-only shutdown command
+* 🗃️ Added database migrations for new settings
+* 🧩 Added additional database indexes for moderation data
 
-* Improved global slash-command synchronization
-* Removed stale guild-scoped command registrations
-* Prevented duplicate global command synchronization
-* Disabled discord.py's default `help` command
-* Added Delicate's custom help command
-* Added the Tickets cog
-* Added persistent ticket buttons
-* Improved invite detection using the Discord audit log
-* Improved invite-DM failure handling
-* Improved prefix and slash compatibility for utility commands
-* Added ticket configuration to server settings
-* Improved startup command registration
-* Improved startup stability when loading modules and commands
+### Changed
 
-## Fixed
+* Reworked the main bot architecture around the current moderation and utility systems
+* Expanded the SQLite database to support suggestions and additional server configuration
+* Improved hybrid slash/prefix command handling
+* Improved response handling for slash and prefix commands
+* Improved persistent configuration across restarts
+* Improved moderation logging
+* Improved temporary moderation handling
+* Improved startup and module loading
+* Updated the ticket system to work with the current database and configuration structure
+* Updated project dependencies
 
-* Fixed duplicated slash commands
-* Fixed duplicate Tickets cog loading
-* Fixed the custom `/help` command registration conflict
-* Fixed `Unknown interaction` errors from the invite-DM test command
-* Fixed invalid ticket-button emoji errors
-* Fixed ticket buttons after bot restarts
-* Fixed invite-DM testing with both slash and prefix commands
-* Fixed duplicate global command synchronization
-* Fixed startup errors caused by loading the Tickets cog twice
+### Fixed
+
+* Fixed interaction response handling after deferred commands
+* Fixed database migration handling for existing installations
+* Fixed persistent configuration edge cases
+* Fixed command synchronization issues
+* Fixed startup and module loading issues
+* Fixed ticket module compatibility with the updated database
+* Fixed several command and interaction errors
 
 ---
 
 ## Previous Features
 
-### Moderation
+### 🛡️ Moderation
 
 * Ban members
 * Kick members
@@ -66,17 +57,18 @@ All notable changes to **Delicate Bot** are documented here.
 * Unban users
 * Warn members
 * Moderation case numbers
-* Moderation history
+* Persistent moderation history
 * Case lookup
-* Moderation logging
+* Staff moderation logs
+* Automatic expiration of temporary moderation actions
 
-### Warning Escalation
+### ⚠️ Warning Escalation
 
 * 3 active warnings → 1 hour timeout
 * 5 active warnings → 1 day timeout
 * 7 active warnings → permanent ban
 
-### Temporary Moderation
+### ⏱️ Temporary Moderation
 
 * Seconds
 * Minutes
@@ -87,15 +79,29 @@ All notable changes to **Delicate Bot** are documented here.
 * Permanent bans
 * Automatic expiration of temporary bans and timeouts
 
-### Server Configuration
+### ⚙️ Server Configuration
 
 * Moderation log channel
-* Boost notification channel
+* Boost announcement channel
 * Staff role
-* Ticket panel channel
-* Per-server persistent settings
+* Suggestion channel
+* Ticket panel configuration
+* Persistent per-server settings
+* Configurable server prefixes
 
-### Boost System
+### 🎟️ Support Tickets
+
+* Configurable ticket panel
+* Private ticket channels
+* Staff-role access
+* One-ticket-per-user protection
+* Ticket open button
+* Ticket close button
+* Persistent ticket buttons
+* Automatic transcripts
+* Transcript logging
+
+### 📦 Boost System
 
 * Automatic boost detection
 * Boost announcement embeds
@@ -104,7 +110,16 @@ All notable changes to **Delicate Bot** are documented here.
 * `/testboost`
 * `d!testboost`
 
-### Utility Commands
+### ✉️ Invite Handling
+
+* Automatic inviter detection
+* Audit-log based invite detection
+* Private welcome DMs
+* Safe handling for unavailable DMs
+* `/testinvitedm`
+* `d!testinvitedm`
+
+### ✦ Utility Commands
 
 * `/help`
 * `d!help`
@@ -113,51 +128,21 @@ All notable changes to **Delicate Bot** are documented here.
 * `/ping`
 * `d!ping`
 
-### Invite Handling
+### 🪽 Prefix System
 
-* Automatic inviter detection when Delicate joins a server
-* Private welcome DM for the inviter
-* Audit-log based invite detection
-* Safe handling for unavailable DMs
-* `/testinvitedm`
-* `d!testinvitedm`
-
-### Support Tickets
-
-* Configurable ticket panel
-* Private ticket channels
-* Staff access
-* One-ticket-per-user protection
-* Ticket close button
-* Ticket transcripts
-* Transcript logging
+* Default `d!` prefix
+* Custom server prefixes
+* Prefix reset functionality
+* `d!` remains available even when a custom prefix is configured
 
 ---
 
 ## Current Status
 
-Delicate is publicly available and continues to receive improvements and new features.
+Delicate is actively maintained and continues to receive improvements across moderation, utility commands, tickets, suggestions, configuration, and server management.
 
-Development commands currently include:
-
-```text
-/testboost
-d!testboost
-
-/testinvitedm
-d!testinvitedm
-```
-
-These commands are intended for development and testing and may be restricted or removed in future releases.
+See [`README.md`](README.md) for setup instructions and the current feature list.
 
 ---
 
-## Current Startup
-
-A normal startup should look similar to:
-
-```text
-🎟️ Tickets cog loaded.
-Synced 19 global command(s).
-Logged in as ...
-```
+**Delicate — soft colors, hard moderation.** 🎀📦
