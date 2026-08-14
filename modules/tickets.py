@@ -520,10 +520,14 @@ class Tickets(commands.Cog):
             ephemeral=True,
         )
 
-    @commands.command(name="setticket")
+    @commands.command(
+        name="setticket",
+        help="Set the ticket panel channel.",
+    )
     @commands.has_permissions(
         administrator=True
     )
+
     @commands.guild_only()
     async def setticket_prefix(
         self,
@@ -601,7 +605,11 @@ class Tickets(commands.Cog):
             ephemeral=True,
         )
 
-    @commands.command(name="ticket")
+    @commands.command(
+        name="ticket",
+        help="Post the configured ticket panel.",
+    )
+
     @commands.has_permissions(
         administrator=True
     )
@@ -660,7 +668,11 @@ class Tickets(commands.Cog):
     ):
         await self.close_ticket(interaction)
 
-    @commands.command(name="closeticket")
+    @commands.command(
+        name="closeticket",
+        help="Close the current ticket.",
+    )
+
     @commands.guild_only()
     async def closeticket_prefix(
         self,

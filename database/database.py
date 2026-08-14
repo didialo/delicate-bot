@@ -121,6 +121,82 @@ def init_database() -> None:
     )
 
     # --------------------------------------------------------
+    # BLACKLISTED GUILDS
+    # --------------------------------------------------------
+
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS blacklisted_guilds (
+            guild_id INTEGER PRIMARY KEY,
+
+            guild_name TEXT NOT NULL,
+
+            blacklisted_at INTEGER NOT NULL
+        )
+        """
+    )
+
+    # --------------------------------------------------------
+    # SUGGESTIONS
+    # --------------------------------------------------------
+
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            guild_id INTEGER NOT NULL,
+
+            user_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+
+            message TEXT NOT NULL,
+
+            status TEXT NOT NULL DEFAULT 'PENDING',
+
+            created_at INTEGER NOT NULL,
+
+            reviewed_by INTEGER,
+
+            reviewed_at INTEGER,
+
+            channel_id INTEGER,
+
+            message_id INTEGER
+        )
+        """
+    )
+
+    # --------------------------------------------------------
+    # SUGGESTION DATABASE MIGRATION
+    # --------------------------------------------------------
+
+    suggestion_columns = {
+        row["name"]
+        for row in db.execute(
+            "PRAGMA table_info(suggestions)"
+        ).fetchall()
+    }
+
+    if "channel_id" not in suggestion_columns:
+        db.execute(
+            """
+            ALTER TABLE suggestions
+            ADD COLUMN channel_id INTEGER
+            """
+        )
+
+    if "message_id" not in suggestion_columns:
+        db.execute(
+            """
+            ALTER TABLE suggestions
+            ADD COLUMN message_id INTEGER
+            """
+        )
+
+    db.commit()
+
+    # --------------------------------------------------------
     # INDEXES
     # --------------------------------------------------------
 
@@ -152,10 +228,170 @@ def init_database() -> None:
 # GUILD SETTINGS
 # ============================================================
 
+# ============================================================
+# SUGGESTIONS
+# ============================================================
+
+def create_suggestion(
+    guild_id: int,
+    user,
+    message: str,
+) -> int:
+
+    cur = db.execute(
+        """
+        INSERT INTO suggestions (
+            guild_id,
+            user_id,
+            user_name,
+            message,
+            status,
+            created_at,
+            reviewed_by,
+            reviewed_at,
+            channel_id,
+            message_id
+        )
+        VALUES (
+            ?,
+            ?,
+            ?,
+            ?,
+            'PENDING',
+            ?,
+            NULL,
+            NULL,
+            NULL,
+            NULL
+        )
+        """,
+        (
+            guild_id,
+            user.id,
+            str(user),
+            message,
+            now_ts(),
+        ),
+    )
+
+    db.commit()
+
+    return int(cur.lastrowid or 0)
+
+
+def set_suggestion_message(
+    suggestion_id: int,
+    channel_id: int,
+    message_id: int,
+) -> None:
+
+    db.execute(
+        """
+        UPDATE suggestions
+        SET
+            channel_id = ?,
+            message_id = ?
+        WHERE id = ?
+        """,
+        (
+            channel_id,
+            message_id,
+            suggestion_id,
+        ),
+    )
+
+    db.commit()
+
+
+def get_suggestion(
+    guild_id: int,
+    suggestion_id: int,
+):
+    return db.execute(
+        """
+        SELECT *
+        FROM suggestions
+        WHERE id = ?
+        AND guild_id = ?
+        """,
+        (
+            suggestion_id,
+            guild_id,
+        ),
+    ).fetchone()
+
+
+def update_suggestion_status(
+    guild_id: int,
+    suggestion_id: int,
+    status: str,
+    reviewer_id: int,
+) -> bool:
+
+    cur = db.execute(
+        """
+        UPDATE suggestions
+        SET
+            status = ?,
+            reviewed_by = ?,
+            reviewed_at = ?
+        WHERE id = ?
+        AND guild_id = ?
+        """,
+        (
+            status,
+            reviewer_id,
+            now_ts(),
+            suggestion_id,
+            guild_id,
+        ),
+    )
+
+    db.commit()
+
+    return cur.rowcount > 0
+
+# ------------------------------------------------------------
+# GUILD SETTINGS DATABASE MIGRATION
+# ------------------------------------------------------------
+
+guild_settings_columns = {
+    row["name"]
+    for row in db.execute(
+        "PRAGMA table_info(guild_settings)"
+    ).fetchall()
+}
+
+if "tag_reward_role_id" not in guild_settings_columns:
+    db.execute(
+        """
+        ALTER TABLE guild_settings
+        ADD COLUMN tag_reward_role_id INTEGER
+        """
+    )
+
+    db.commit()
+
+if "suggestion_channel_id" not in guild_settings_columns:
+    db.execute(
+        """
+        ALTER TABLE guild_settings
+        ADD COLUMN suggestion_channel_id INTEGER
+        """
+    )
+
+db.commit()
+
+# ------------------------------------------------------------
+# VALID SETTINGS
+# ------------------------------------------------------------
+
 VALID_SETTINGS = {
     "log_channel_id",
     "boost_channel_id",
     "staff_role_id",
+    "tag_reward_role_id",
+    "suggestion_channel_id",
 }
 
 
@@ -239,6 +475,89 @@ def reset_guild_settings(
 
     db.commit()
 
+# ============================================================
+# GUILD BLACKLIST
+# ============================================================
+
+def blacklist_guild(
+    guild,
+) -> None:
+    """
+    Permanently blacklist a guild from using Delicate.
+    """
+
+    db.execute(
+        """
+        INSERT OR REPLACE INTO blacklisted_guilds (
+            guild_id,
+            guild_name,
+            blacklisted_at
+        )
+        VALUES (?, ?, ?)
+        """,
+        (
+            guild.id,
+            guild.name,
+            now_ts(),
+        ),
+    )
+
+    db.commit()
+
+
+def unblacklist_guild(
+    guild_id: int,
+) -> None:
+    """
+    Remove a guild from the Delicate blacklist.
+    """
+
+    db.execute(
+        """
+        DELETE FROM blacklisted_guilds
+        WHERE guild_id = ?
+        """,
+        (guild_id,),
+    )
+
+    db.commit()
+
+
+def is_guild_blacklisted(
+    guild_id: int,
+) -> bool:
+    """
+    Check whether a guild is blacklisted.
+    """
+
+    row = db.execute(
+        """
+        SELECT 1
+        FROM blacklisted_guilds
+        WHERE guild_id = ?
+        LIMIT 1
+        """,
+        (guild_id,),
+    ).fetchone()
+
+    return row is not None
+
+
+def get_blacklisted_guild(
+    guild_id: int,
+):
+    """
+    Return blacklist information for a guild.
+    """
+
+    return db.execute(
+        """
+        SELECT *
+        FROM blacklisted_guilds
+        WHERE guild_id = ?
+        """,
+        (guild_id,),
+    ).fetchone()
 
 # ============================================================
 # MODERATION CASES
@@ -549,3 +868,30 @@ def database_ready() -> bool:
 # ============================================================
 
 init_database()
+
+db.execute(
+    """
+    CREATE TABLE IF NOT EXISTS suggestions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        guild_id INTEGER NOT NULL,
+
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+
+        message TEXT NOT NULL,
+
+        status TEXT NOT NULL DEFAULT 'PENDING',
+
+        created_at INTEGER NOT NULL,
+
+        reviewed_by INTEGER,
+
+        reviewed_at INTEGER,
+
+        channel_id INTEGER,
+
+        message_id INTEGER
+    )
+    """
+)
