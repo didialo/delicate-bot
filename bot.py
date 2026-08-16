@@ -10,10 +10,15 @@ from typing import Optional
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
+
+from shards import DelicateBot
+
 from dotenv import load_dotenv
 
 from database import database
+
 from modules import tickets
+from modules import special
 
 
 # ============================================================
@@ -203,7 +208,7 @@ intents.message_content = True
 intents.members = True
 intents.presences = True
 
-bot = commands.Bot(
+bot = DelicateBot(
     command_prefix="d!",
     intents=intents,
     help_command=None,
@@ -1820,10 +1825,12 @@ async def membercount(
 
 @bot.hybrid_command(
     name="ping",
-    description="Check Delicate's connection and system status.",
+    description="Check Delicate's connection, shards, and system status.",
 )
-async def ping(ctx: commands.Context) -> None:
-    """Show Delicate's current connection and system information."""
+async def ping(
+    ctx: commands.Context,
+) -> None:
+    """Show Delicate's connection, shard, and system information."""
 
     import platform
     import time
@@ -1833,7 +1840,29 @@ async def ping(ctx: commands.Context) -> None:
     # Gateway latency
     # --------------------------------------------------------
 
-    gateway_ms = round(bot.latency * 1000)
+    gateway_ms = round(
+        bot.latency * 1000
+    )
+
+    # --------------------------------------------------------
+    # Shard latency
+    # --------------------------------------------------------
+
+    shard_latencies = bot.get_shard_latencies()
+
+    shard_count = bot.get_shard_count()
+
+    average_shard_ms = bot.get_average_latency()
+
+    if shard_latencies:
+        shard_lines = "\n".join(
+            f"**Shard {shard_id}:** `{latency}ms`"
+            for shard_id, latency in shard_latencies
+        )
+    else:
+        shard_lines = (
+            "**Shard 0:** `measuring...`"
+        )
 
     # --------------------------------------------------------
     # Uptime
@@ -1845,7 +1874,9 @@ async def ping(ctx: commands.Context) -> None:
 
     total_seconds = max(
         0,
-        int(uptime_delta.total_seconds()),
+        int(
+            uptime_delta.total_seconds()
+        ),
     )
 
     days, remainder = divmod(
@@ -1866,17 +1897,27 @@ async def ping(ctx: commands.Context) -> None:
     uptime_parts = []
 
     if days:
-        uptime_parts.append(f"{days}d")
+        uptime_parts.append(
+            f"{days}d"
+        )
 
     if hours or days:
-        uptime_parts.append(f"{hours}h")
+        uptime_parts.append(
+            f"{hours}h"
+        )
 
     if minutes or hours or days:
-        uptime_parts.append(f"{minutes}m")
+        uptime_parts.append(
+            f"{minutes}m"
+        )
 
-    uptime_parts.append(f"{seconds}s")
+    uptime_parts.append(
+        f"{seconds}s"
+    )
 
-    uptime = " ".join(uptime_parts)
+    uptime = " ".join(
+        uptime_parts
+    )
 
     # --------------------------------------------------------
     # Delicate process memory
@@ -1900,14 +1941,12 @@ async def ping(ctx: commands.Context) -> None:
         f"{platform.release()}"
     )
 
-    python_version = platform.python_version()
+    python_version = (
+        platform.python_version()
+    )
 
     # --------------------------------------------------------
     # Initial response
-    # --------------------------------------------------------
-    #
-    # The response is sent first. We then measure how long it
-    # takes Discord to accept the edit that adds the real ping.
     # --------------------------------------------------------
 
     embed = discord.Embed(
@@ -1916,12 +1955,15 @@ async def ping(ctx: commands.Context) -> None:
             "📦 **delicate · little status box ୨୧**\n\n"
             "♡ everything seems to be packed safely.\n\n"
             "╭───────────────╮\n"
-            "│ ✦ **response**  `measuring...`\n"
+            f"│ ✦ **response**  `measuring...`\n"
             f"│ ♡ **gateway**    `{gateway_ms}ms`\n"
-            f"│ ୨୧ **uptime**     `{uptime}`\n"
+            f"│ ୨୧ **shards**     `{shard_count}`\n"
+            f"│ ✦ **uptime**     `{uptime}`\n"
             "╰───────────────╯"
         ),
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(
+            timezone.utc
+        ),
     )
 
     if bot.user is not None:
@@ -1929,6 +1971,15 @@ async def ping(ctx: commands.Context) -> None:
             name="delicate",
             icon_url=bot.user.display_avatar.url,
         )
+
+    embed.add_field(
+        name="♡ shard latency",
+        value=(
+            f"{shard_lines}\n\n"
+            f"**Average:** `{average_shard_ms}ms`"
+        ),
+        inline=False,
+    )
 
     embed.add_field(
         name="♡ runtime",
@@ -1941,7 +1992,9 @@ async def ping(ctx: commands.Context) -> None:
 
     embed.add_field(
         name="✦ memory",
-        value=f"`{memory_mb:.2f} MB used`",
+        value=(
+            f"`{memory_mb:.2f} MB used`"
+        ),
         inline=True,
     )
 
@@ -1959,7 +2012,7 @@ async def ping(ctx: commands.Context) -> None:
     )
 
     # --------------------------------------------------------
-    # Send initial message / interaction response
+    # Send initial message
     # --------------------------------------------------------
 
     response_message = await send_response(
@@ -1968,7 +2021,7 @@ async def ping(ctx: commands.Context) -> None:
     )
 
     # --------------------------------------------------------
-    # Measure actual Discord edit round-trip
+    # Measure Discord round-trip
     # --------------------------------------------------------
 
     roundtrip_start = time.perf_counter()
@@ -1979,12 +2032,11 @@ async def ping(ctx: commands.Context) -> None:
         "╭───────────────╮\n"
         f"│ ✦ **response**  `measuring...`\n"
         f"│ ♡ **gateway**    `{gateway_ms}ms`\n"
-        f"│ ୨୧ **uptime**     `{uptime}`\n"
+        f"│ ୨୧ **shards**     `{shard_count}`\n"
+        f"│ ✦ **uptime**     `{uptime}`\n"
         "╰───────────────╯"
     )
 
-    # The existing send_response helper returns a message for
-    # prefix commands and a WebhookMessage for interactions.
     await response_message.edit(
         embed=embed
     )
@@ -1992,8 +2044,10 @@ async def ping(ctx: commands.Context) -> None:
     roundtrip_ms = max(
         1,
         round(
-            (time.perf_counter() - roundtrip_start)
-            * 1000
+            (
+                time.perf_counter()
+                - roundtrip_start
+            ) * 1000
         ),
     )
 
@@ -2007,7 +2061,8 @@ async def ping(ctx: commands.Context) -> None:
         "╭───────────────╮\n"
         f"│ ✦ **response**  `{roundtrip_ms}ms`\n"
         f"│ ♡ **gateway**    `{gateway_ms}ms`\n"
-        f"│ ୨୧ **uptime**     `{uptime}`\n"
+        f"│ ୨୧ **shards**     `{shard_count}`\n"
+        f"│ ✦ **uptime**     `{uptime}`\n"
         "╰───────────────╯"
     )
 
@@ -4090,8 +4145,8 @@ async def on_ready():
 @bot.event
 async def setup_hook():
     await tickets.setup(bot)
+    await special.setup(bot)
 
-    # Sync globally first.
     synced = await bot.tree.sync()
 
     print(
@@ -4099,8 +4154,6 @@ async def setup_hook():
         f"global command(s)."
     )
 
-    # Copy the complete global command tree to the
-    # development/test guild so changes appear immediately.
     if GUILD_ID:
         guild = discord.Object(id=GUILD_ID)
 
