@@ -2,7 +2,7 @@
 
 > A cozy, pastel-styled Discord moderation bot built to keep servers safe, calm, and organized without losing a little personality.
 
-Delicate is a Python-based Discord moderation bot focused on practical server management with a soft, welcoming personality. It combines moderation, persistent warnings, support tickets, suggestions, server configuration, Server Tag rewards, invite welcome DMs, and SQLite storage in one little cardboard box. ☁️📦
+Delicate is a Python-based Discord moderation bot focused on practical server management with a soft, welcoming personality. It combines moderation, persistent warnings, support tickets, suggestions, server configuration, Server Tag rewards, invite welcome DMs, SQLite storage, and Delicate-specific server tools in one little cardboard box. ☁️📦
 
 > **Delicate — keeping things safe, calm, and cozy.** ୨୧
 
@@ -32,15 +32,11 @@ Delicate includes a complete moderation workflow with persistent cases and confi
 
 Warnings are stored in SQLite and can automatically escalate into stronger moderation actions.
 
-The default thresholds are:
-
 | Active warnings | Action         |
 | --------------: | :------------- |
 |               3 | 1 hour timeout |
 |               5 | 1 day timeout  |
 |               7 | Permanent ban  |
-
-The escalation system is defined in `bot.py`:
 
 ```py
 WARN_ESCALATION = [
@@ -49,8 +45,6 @@ WARN_ESCALATION = [
     (7, "BAN", "perm"),
 ]
 ```
-
-Only the highest threshold reached is applied, so reaching 5 active warnings triggers the 5-warning action rather than running both escalation levels.
 
 ### 🎟️ Support Tickets
 
@@ -68,12 +62,10 @@ Tickets support:
 * Member-only access
 * Configured staff-role access
 * One open ticket per member
-* Persistent open/close buttons
+* Persistent ticket buttons
 * Automatic transcript generation
 * Transcript delivery to the configured log channel
 * Ticket panels that continue working after bot restarts
-
-Ticket channels are created inside the same category as the configured ticket panel channel.
 
 ### 💡 Suggestions
 
@@ -86,7 +78,7 @@ Servers can configure a dedicated suggestion channel and let members submit sugg
 /suggestdeny <suggestion_id>
 ```
 
-Suggestions are stored persistently with their author, message, status, timestamps, and Discord message information. Approved and denied suggestions update their original embed.
+Suggestions are stored persistently with their author, message, status, timestamps, and Discord message information.
 
 ### 🏷️ Server Tag Rewards
 
@@ -107,7 +99,7 @@ Staff can send polished announcement embeds to any text channel, with optional a
 /announce <channel> <message> [attachment]
 ```
 
-The command supports images, videos, and other files uploaded with the command. Images are also displayed inside the announcement embed when possible.
+The command supports images, videos, and other files uploaded with the command.
 
 ### 🚀 Server Boost Configuration
 
@@ -128,8 +120,6 @@ For development and testing:
 d!testinvitedm
 ```
 
-The welcome flow safely handles cases where the inviter cannot be identified or cannot receive direct messages.
-
 ### 🚫 Guild Blacklist
 
 Developer-only controls allow Delicate to permanently blacklist a guild from using the bot.
@@ -139,13 +129,104 @@ Developer-only controls allow Delicate to permanently blacklist a guild from usi
 /unblacklist <server_id>
 ```
 
-Blacklisted guilds are denied access to Delicate's commands, while the developer remains able to manage the blacklist.
+---
+
+## ✦ Delicate Systems
+
+These are specialized tools built specifically around Delicate's identity rather than standard moderation functionality.
+
+### 📦 `/snapshot`
+
+Save a lightweight snapshot of the current server state.
+
+Snapshots can store:
+
+* Server member count
+* Channel count
+* Role count
+* Boost count and level
+* Delicate configuration
+* Snapshot name and creator
+* Creation timestamp
+
+Example:
+
+```text
+d!snapshot before-event
+```
+
+### 🛡️ `/handoff`
+
+Generate a staff handoff report for moderators taking over a shift.
+
+The report includes:
+
+* Active moderation cases
+* Active warnings
+* Pending suggestions
+* Recent moderation activity
+* Handoff timestamp
+
+### ♡ `/heartbeat`
+
+Check Delicate's internal systems.
+
+The heartbeat checks systems such as:
+
+* Database
+* Moderation logging
+* Staff configuration
+* Suggestions
+* Boost configuration
+* Server Tag rewards
+* Background expiration worker
+* Gateway latency
+
+Example output:
+
+```text
+♡ DELICATE HEARTBEAT
+
+database .......... 💗 healthy
+logging ........... 💗 healthy
+staff ............. 💗 healthy
+suggestions ....... 💗 healthy
+boosts ............ 💗 healthy
+rewards ........... 💗 healthy
+worker ............ 💗 healthy
+```
+
+### 🪽 `/foster`
+
+Assign a temporary staff guardian to a member.
+
+```text
+d!foster @member @staff 1h
+```
+
+Foster assignments are persistent and include:
+
+* Member
+* Guardian
+* Duration
+* Expiration time
+* Assignment timestamp
+
+### ☁️ `/echo`
+
+Connect a member's recent moderation events into one timeline.
+
+```text
+d!echo @member
+```
+
+Delicate combines recorded moderation cases and warnings into a single chronological view.
 
 ---
 
 ## ✦ Commands
 
-Delicate currently provides **37 registered commands**, available primarily as hybrid slash + prefix commands.
+Delicate currently provides **42 registered commands**, available primarily as hybrid slash + prefix commands.
 
 The default prefix is:
 
@@ -192,6 +273,7 @@ d!
 | `/setstaff`   | Set the staff role                 |
 | `/setsuggest` | Set the suggestion channel         |
 | `/setreward`  | Set the Server Tag reward role     |
+| `/setticket`  | Set the ticket panel channel       |
 
 ### Suggestions
 
@@ -205,20 +287,30 @@ d!
 
 | Command        | Description                      |
 | -------------- | -------------------------------- |
-| `/setticket`   | Set and post the ticket panel    |
 | `/ticket`      | Post the configured ticket panel |
 | `/closeticket` | Close the current ticket         |
+
+### Delicate Systems
+
+| Command      | Description                                                   |
+| ------------ | ------------------------------------------------------------- |
+| `/snapshot`  | Save a lightweight snapshot of the current server state       |
+| `/handoff`   | Create a staff shift handoff summary                          |
+| `/heartbeat` | Check Delicate's internal systems                             |
+| `/foster`    | Assign a temporary staff guardian to a member                 |
+| `/echo`      | Connect a member's recent moderation events into one timeline |
+| `/tag`       | Show the Server Tag reward and claim button                   |
 
 ### Developer
 
 | Command         | Description                       |
 | --------------- | --------------------------------- |
-| `/shutdown`     | Shut down Delicate                |
-| `/blacklist`    | Blacklist a guild                 |
+| `/blacklist`    | Permanently blacklist a guild     |
 | `/unblacklist`  | Remove a guild from the blacklist |
+| `/shutdown`     | Shut down Delicate                |
 | `/testinvitedm` | Test the invite welcome DM        |
 
-> Prefix equivalents use `d!` instead of `/` where supported. Some developer and administration commands are permission-restricted.
+> Prefix equivalents use `d!` instead of `/` where supported. Some commands are restricted to staff, administrators, or developers.
 
 ---
 
@@ -244,8 +336,6 @@ Current configuration can include:
 * Suggestion channel
 * Server Tag reward role
 * Ticket panel channel
-
-The `/settings` command provides a quick overview of the current configuration.
 
 ---
 
@@ -291,6 +381,8 @@ The database keeps information such as:
 * Blacklisted guilds
 * Suggestions
 * Ticket configuration
+* Delicate snapshots
+* Foster assignments
 
 By default, Delicate uses:
 
@@ -308,7 +400,7 @@ DATABASE_PATH=moderation.db
 
 ## ✦ Runtime & Status
 
-Delicate's `/ping` command reports more than a simple pong. It can show:
+Delicate's `/ping` command reports:
 
 * Gateway latency
 * Discord round-trip response time
@@ -319,7 +411,7 @@ Delicate's `/ping` command reports more than a simple pong. It can show:
 * Operating system
 * CPU information
 
-Delicate also runs a background expiration worker every 30 seconds to process expired temporary bans and timeouts stored in the database.
+Delicate also runs a background expiration worker every 30 seconds to process expired temporary bans and timeouts.
 
 ---
 
@@ -335,7 +427,7 @@ The design language focuses on:
 * ♡ Cozy, welcoming wording
 * ୨୧ Small decorative accents
 
-Moderation actions still use distinct colors so important actions remain easy to recognize, while tickets, suggestions, settings, and utility commands keep the same cozy visual language.
+Moderation actions use distinct colors so important actions remain easy to recognize, while tickets, suggestions, settings, and Delicate's special systems share the same cozy visual language.
 
 > **soft colors, hard moderation.** 🎀📦
 
@@ -349,8 +441,6 @@ Moderation actions still use distinct colors so important actions remain easy to
 * **python-dotenv**
 * **psutil**
 * **Discord API**
-
-Dependencies are defined in `requirements.txt`.
 
 ---
 
@@ -402,7 +492,7 @@ GUILD_ID=your_test_server_id
 DEV_USER_ID=your_discord_user_id
 ```
 
-Optional database and color configuration can also be provided through environment variables:
+Optional database and color configuration can also be provided:
 
 ```env
 DATABASE_PATH=moderation.db
@@ -420,7 +510,7 @@ Start the bot:
 python bot.py
 ```
 
-On startup, Delicate initializes its database, loads the ticket system, synchronizes its slash commands, and starts its expiration worker.
+On startup, Delicate initializes its database, loads the ticket and special systems, synchronizes its slash commands, and starts its expiration worker.
 
 > Never share your bot token or commit `.env` to a public repository.
 
@@ -434,7 +524,8 @@ delicate-bot/
 ├── database/
 │   └── database.py
 ├── modules/
-│   └── tickets.py
+│   ├── tickets.py
+│   └── special.py
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
@@ -462,7 +553,7 @@ delicate-bot/
 
 ## ✦ Credits
 
-**Delicate** is an original fan-made Discord bot project built around the cozy **Clouddyie's Cardboard Box** aesthetic.
+**Delicate** is an original fan-made Discord bot project built around the cozy **Clouddyiie's Cardboard Box** aesthetic.
 
 ---
 
@@ -473,5 +564,18 @@ Delicate is licensed under the MIT License.
 See [`LICENSE.txt`](LICENSE.txt) for the full license text.
 
 ---
+
+## ✦ Current Status
+
+```text
+// PROJECT: DELICATE
+// VERSION: 2.1.0
+// COMMANDS: 42
+// SPECIAL SYSTEMS: 5
+// DATABASE: SQLITE
+// TICKETS: ACTIVE
+// MODERATION: ACTIVE
+// STATUS: STABLE
+```
 
 # 📦 "keeping things cozy ୨୧"
