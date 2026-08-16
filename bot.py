@@ -2016,6 +2016,148 @@ async def ping(ctx: commands.Context) -> None:
     )
 
 # ============================================================
+# SET LOG CHANNEL
+# ============================================================
+
+@bot.hybrid_command(
+    name="setlog",
+    description="Set the channel where moderation logs are posted.",
+)
+@app_commands.describe(
+    channel="Channel where moderation logs should be posted.",
+)
+@app_commands.default_permissions(
+    administrator=True,
+)
+@app_commands.checks.has_permissions(
+    administrator=True,
+)
+@commands.has_permissions(
+    administrator=True,
+)
+async def setlog(
+    ctx: commands.Context,
+    channel: discord.TextChannel,
+) -> None:
+    """Configure the moderation log channel."""
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return
+
+    database.set_guild_setting(
+        ctx.guild.id,
+        "log_channel_id",
+        channel.id,
+    )
+
+    await send_response(
+        ctx,
+        f"📋 Moderation logs will now be posted in {channel.mention}.",
+        ephemeral=True,
+    )
+
+# ============================================================
+# SET BOOST CHANNEL
+# ============================================================
+
+@bot.hybrid_command(
+    name="setboost",
+    description="Set the channel where boost notifications are posted.",
+)
+@app_commands.describe(
+    channel="Channel where boost notifications should be posted.",
+)
+@app_commands.default_permissions(
+    administrator=True,
+)
+@app_commands.checks.has_permissions(
+    administrator=True,
+)
+@commands.has_permissions(
+    administrator=True,
+)
+async def setboost(
+    ctx: commands.Context,
+    channel: discord.TextChannel,
+) -> None:
+    """Configure the boost notification channel."""
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return
+
+    database.set_guild_setting(
+        ctx.guild.id,
+        "boost_channel_id",
+        channel.id,
+    )
+
+    await send_response(
+        ctx,
+        f"🚀 Boost notifications will now be posted in {channel.mention}.",
+        ephemeral=True,
+    )
+
+# ============================================================
+# SET STAFF ROLE
+# ============================================================
+
+@bot.hybrid_command(
+    name="setstaff",
+    description="Set the role used for staff permissions.",
+)
+@app_commands.describe(
+    role="Role that should be recognized as staff.",
+)
+@app_commands.default_permissions(
+    administrator=True,
+)
+@app_commands.checks.has_permissions(
+    administrator=True,
+)
+@commands.has_permissions(
+    administrator=True,
+)
+async def setstaff(
+    ctx: commands.Context,
+    role: discord.Role,
+) -> None:
+    """Configure the server staff role."""
+
+    if ctx.guild is None:
+        await respond_error(
+            ctx,
+            "This command can only be used in a server.",
+        )
+        return
+
+    if role.is_default():
+        await respond_error(
+            ctx,
+            "You can't use @everyone as the staff role.",
+        )
+        return
+
+    database.set_guild_setting(
+        ctx.guild.id,
+        "staff_role_id",
+        role.id,
+    )
+
+    await send_response(
+        ctx,
+        f"🛡️ Staff role set to {role.mention}.",
+        ephemeral=True,
+    )
+
+# ============================================================
 # SETTINGS
 # ============================================================
 
@@ -3941,7 +4083,6 @@ async def on_ready():
     if not expiration_worker.is_running():
         expiration_worker.start()
  
-
 # ============================================================
 # SETUP HOOK
 # ============================================================
@@ -3950,28 +4091,31 @@ async def on_ready():
 async def setup_hook():
     await tickets.setup(bot)
 
-    if GUILD_ID:
-        guild = discord.Object(id=GUILD_ID)
-
-        bot.tree.clear_commands(
-            guild=guild,
-        )
-
-        await bot.tree.sync(
-            guild=guild,
-        )
-
-        print(
-            f"Cleared stale guild commands from "
-            f"guild {GUILD_ID}."
-        )
-
+    # Sync globally first.
     synced = await bot.tree.sync()
 
     print(
         f"Synced {len(synced)} "
         f"global command(s)."
     )
+
+    # Copy the complete global command tree to the
+    # development/test guild so changes appear immediately.
+    if GUILD_ID:
+        guild = discord.Object(id=GUILD_ID)
+
+        bot.tree.copy_global_to(
+            guild=guild,
+        )
+
+        guild_synced = await bot.tree.sync(
+            guild=guild,
+        )
+
+        print(
+            f"Synced {len(guild_synced)} "
+            f"command(s) to test guild {GUILD_ID}."
+        )
 
 # ============================================================
 # ABOUT
@@ -3991,7 +4135,7 @@ async def about_command(ctx: commands.Context) -> None:
         for guild in bot.guilds
     )
 
-    command_count = len(bot.commands)
+    command_count = len(bot.tree.get_commands())
 
     latency = (
         round(bot.latency * 1000)
