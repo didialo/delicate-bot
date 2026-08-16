@@ -1,148 +1,115 @@
 # Changelog
 
-All notable changes to **Delicate** are documented here.
-
-## August 14, 2026
-
-### Added
-
-* 💡 Added the suggestion system
-* `/suggest` and `d!suggest`
-* `/setsuggest` and `d!setsuggest`
-* Persistent suggestion storage
-* Suggestion IDs and statuses
-* Suggestion message tracking
-* 🐌 Added `/slowmode` and `d!slowmode`
-* 🛡️ Added the developer guild blacklist system
-* ⚙️ Added additional persistent guild settings
-* 🖥️ Added system information and runtime reporting
-* 📡 Added WebSocket latency reporting
-* 🔌 Added the developer-only shutdown command
-* 🗃️ Added database migrations for new settings
-* 🧩 Added additional database indexes for moderation data
-
-### Changed
-
-* Reworked the main bot architecture around the current moderation and utility systems
-* Expanded the SQLite database to support suggestions and additional server configuration
-* Improved hybrid slash/prefix command handling
-* Improved response handling for slash and prefix commands
-* Improved persistent configuration across restarts
-* Improved moderation logging
-* Improved temporary moderation handling
-* Improved startup and module loading
-* Updated the ticket system to work with the current database and configuration structure
-* Updated project dependencies
-
-### Fixed
-
-* Fixed interaction response handling after deferred commands
-* Fixed database migration handling for existing installations
-* Fixed persistent configuration edge cases
-* Fixed command synchronization issues
-* Fixed startup and module loading issues
-* Fixed ticket module compatibility with the updated database
-* Fixed several command and interaction errors
+All notable changes to Delicate are documented here.
 
 ---
 
-## Previous Features
+## 15/08/2026
 
-### 🛡️ Moderation
+### ✦ Added
 
-* Ban members
-* Kick members
-* Timeout members
-* Remove timeouts
-* Unban users
-* Warn members
-* Moderation case numbers
-* Persistent moderation history
-* Case lookup
-* Staff moderation logs
-* Automatic expiration of temporary moderation actions
+* Added full moderation case tracking with persistent SQLite storage.
+* Added temporary and permanent ban support.
+* Added member kick moderation.
+* Added member timeout moderation.
+* Added unban and timeout removal commands.
+* Added persistent warning system.
+* Added automatic warning escalation:
 
-### ⚠️ Warning Escalation
+  * 3 warnings → 1 hour timeout
+  * 5 warnings → 1 day timeout
+  * 7 warnings → permanent ban
+* Added moderation history command.
+* Added individual moderation case lookup.
+* Added moderation log embeds.
+* Added channel lock and unlock commands.
+* Added channel hide and unhide commands.
+* Added channel slowmode controls.
+* Added message purge command.
+* Added persistent per-server settings.
+* Added configurable moderation log channel.
+* Added configurable boost notification channel.
+* Added configurable staff role.
+* Added configurable suggestion channel.
+* Added configurable Server Tag reward role.
+* Added full suggestion system with pending, approved, and denied states.
+* Added persistent private ticket system.
+* Added ticket panel configuration.
+* Added persistent ticket buttons.
+* Added one-open-ticket-per-user protection.
+* Added automatic ticket transcript generation.
+* Added ticket transcript logging.
+* Added Server Tag reward panel with role claiming.
+* Added announcement command with optional attachments.
+* Added member count command.
+* Added custom Delicate invite command.
+* Added invite welcome DMs using Discord audit logs.
+* Added developer guild blacklist system.
+* Added developer guild unblacklist system.
+* Added developer shutdown command.
+* Added test invite DM command.
+* Added `/about` information card.
+* Added `/help` command list.
+* Added enhanced `/ping` system information.
+* Added CPU detection.
+* Added process memory reporting.
+* Added uptime reporting.
+* Added WebSocket latency reporting.
+* Added automatic temporary moderation expiration worker.
+* Added hybrid command support for the main bot command set.
+* Added persistent ticket views that survive bot restarts.
+* Added cozy pastel Delicate visual styling throughout embeds and responses.
 
-* 3 active warnings → 1 hour timeout
-* 5 active warnings → 1 day timeout
-* 7 active warnings → permanent ban
+### ✦ Improved
 
-### ⏱️ Temporary Moderation
+* Improved moderation permission checks.
+* Improved moderator role hierarchy checks.
+* Improved bot role hierarchy checks.
+* Improved Discord interaction response handling for hybrid commands.
+* Improved error handling for slash and prefix commands.
+* Improved suggestion message updates after approval or denial.
+* Improved ticket privacy through role and member-specific channel permissions.
+* Improved server configuration visibility through `/settings`.
+* Improved command synchronization for global commands and the development guild.
+* Improved status and runtime information shown by `/ping`.
+* Improved overall consistency of Delicate's cozy visual identity.
 
-* Seconds
-* Minutes
-* Hours
-* Days
-* Weeks
-* Compound durations
-* Permanent bans
-* Automatic expiration of temporary bans and timeouts
+### ✦ Fixed
 
-### ⚙️ Server Configuration
+* Fixed missing `setlog`, `setboost`, and `setstaff` commands.
+* Fixed global command synchronization stopping at 34 commands.
+* Restored the full 37-command command tree.
+* Fixed `/about` command counting so it reads the registered slash command tree.
+* Fixed ticket commands being loaded after the ticket cog setup.
+* Fixed temporary moderation cases not being automatically closed after expiration.
+* Fixed role hierarchy edge cases for moderation actions.
+* Fixed ticket channels allowing unintended regular-member visibility.
+* Fixed suggestion embeds not reflecting their updated status.
+* Fixed moderation and ticket configuration data being lost between restarts.
 
-* Moderation log channel
-* Boost announcement channel
-* Staff role
-* Suggestion channel
-* Ticket panel configuration
-* Persistent per-server settings
-* Configurable server prefixes
+---
 
-### 🎟️ Support Tickets
+## [1.0.0]
 
-* Configurable ticket panel
-* Private ticket channels
-* Staff-role access
-* One-ticket-per-user protection
-* Ticket open button
-* Ticket close button
-* Persistent ticket buttons
-* Automatic transcripts
-* Transcript logging
+### ✦ Initial Release
 
-### 📦 Boost System
-
-* Automatic boost detection
-* Boost announcement embeds
-* Boost count display
-* Boost level display
-* `/testboost`
-* `d!testboost`
-
-### ✉️ Invite Handling
-
-* Automatic inviter detection
-* Audit-log based invite detection
-* Private welcome DMs
-* Safe handling for unavailable DMs
-* `/testinvitedm`
-* `d!testinvitedm`
-
-### ✦ Utility Commands
-
-* `/help`
-* `d!help`
-* `/invite`
-* `d!invite`
-* `/ping`
-* `d!ping`
-
-### 🪽 Prefix System
-
-* Default `d!` prefix
-* Custom server prefixes
-* Prefix reset functionality
-* `d!` remains available even when a custom prefix is configured
+* Initial Delicate moderation bot implementation.
+* SQLite-backed moderation storage.
+* Basic moderation commands.
+* Initial server configuration system.
+* Initial Delicate visual identity.
+* Initial ticket and utility functionality.
 
 ---
 
 ## Current Status
 
-Delicate is actively maintained and continues to receive improvements across moderation, utility commands, tickets, suggestions, configuration, and server management.
-
-See [`README.md`](README.md) for setup instructions and the current feature list.
-
----
-
-**Delicate — soft colors, hard moderation.** 🎀📦
+```text
+// PROJECT: DELICATE
+// VERSION: 2.0.0
+// COMMANDS: 37
+// DATABASE: SQLITE
+// TICKETS: ACTIVE
+// MODERATION: ACTIVE
+// STATUS: STABLE
+```
