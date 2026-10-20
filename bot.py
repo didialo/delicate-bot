@@ -19,6 +19,8 @@ from database import database
 
 from modules import tickets
 from modules import special
+from modules import open_moderation
+from modules import welcome_messages
 
 
 # ============================================================
@@ -388,6 +390,18 @@ async def send_log(
     duration: Optional[str] = None,
     extra: Optional[str] = None,
 ):
+
+    bot.dispatch(
+        "moderation_case_created",
+        guild,
+        case_id,
+        action,
+        member,
+        moderator,
+        reason,
+        duration,
+    )
+
     channel = await get_log_channel(guild)
 
     if channel is None:
@@ -4146,6 +4160,8 @@ async def on_ready():
 async def setup_hook():
     await tickets.setup(bot)
     await special.setup(bot)
+    await open_moderation.setup(bot)
+    await welcome_messages.setup(bot)
 
     synced = await bot.tree.sync()
 
@@ -4352,14 +4368,26 @@ async def about_command(ctx: commands.Context) -> None:
         embed=embed,
     )
 
+
 # ============================================================
 # MAIN
 # ============================================================
 
 async def main():
-
     async with bot:
         await bot.start(BOT_TOKEN)
+
+
+@bot.event
+async def on_ready():
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Game(name="d!help"),
+    )
+
+    print(f"Active shards: {bot.get_shard_count()}")
+    print(f"Shard IDs: {list(bot.shards.keys())}")
+    print(f"Delicate is connected as {bot.user}")
 
 
 if __name__ == "__main__":
